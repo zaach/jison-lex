@@ -27,6 +27,7 @@ var opts = require("nomnom")
     help: 'The type of module to generate (commonjs, js)'
   })
   .option('version', {
+    abbr: 'V',
     flag: true,
     help: 'print version and exit',
     callback: function() {

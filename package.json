@@ -25,7 +25,7 @@
     "node": ">=0.4"
   },
   "dependencies": {
-    "lex-parser": "0.0.1",
+    "lex-parser": "0.1.x",
     "nomnom": "1.5.2"
   },
   "devDependencies": {
