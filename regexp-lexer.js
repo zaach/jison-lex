@@ -163,11 +163,19 @@ RegExpLexer.prototype = {
         this.yylineno = this.yyleng = 0;
         this.yytext = this.matched = this.match = '';
         this.conditionStack = ['INITIAL'];
-        this.yylloc = {first_line:1,first_column:0,last_line:1,last_column:0};
-        if (this.options.ranges) this.yylloc.range = [0,0];
+        this.yylloc = {
+			first_line: 1,
+			first_column: 0,
+			last_line: 1,
+			last_column: 0
+		};
+        if (this.options.ranges) {
+			this.yylloc.range = [0,0];
+		}
         this.offset = 0;
         return this;
     },
+
     // consumes and returns one char from the input
     input: function () {
         var ch = this._input[0];
@@ -183,40 +191,48 @@ RegExpLexer.prototype = {
         } else {
             this.yylloc.last_column++;
         }
-        if (this.options.ranges) this.yylloc.range[1]++;
+        if (this.options.ranges) {
+			this.yylloc.range[1]++;
+		}
 
         this._input = this._input.slice(1);
         return ch;
     },
-    // unshifts one char into the input
+
+    // unshifts one char (or a string) into the input
     unput: function (ch) {
         var len = ch.length;
         var lines = ch.split(/(?:\r\n?|\n)/g);
 
         this._input = ch + this._input;
-        this.yytext = this.yytext.substr(0, this.yytext.length-len-1);
+        this.yytext = this.yytext.substr(0, this.yytext.length - len - 1);
         //this.yyleng -= len;
         this.offset -= len;
         var oldLines = this.match.split(/(?:\r\n?|\n)/g);
-        this.match = this.match.substr(0, this.match.length-1);
-        this.matched = this.matched.substr(0, this.matched.length-1);
+        this.match = this.match.substr(0, this.match.length - 1);
+        this.matched = this.matched.substr(0, this.matched.length - 1);
 
-        if (lines.length-1) this.yylineno -= lines.length-1;
+        if (lines.length - 1) {
+			this.yylineno -= lines.length - 1;
+		}
         var r = this.yylloc.range;
 
-        this.yylloc = {first_line: this.yylloc.first_line,
-          last_line: this.yylineno+1,
-          first_column: this.yylloc.first_column,
-          last_column: lines ?
-              (lines.length === oldLines.length ? this.yylloc.first_column : 0) + oldLines[oldLines.length - lines.length].length - lines[0].length:
+        this.yylloc = {
+			first_line: this.yylloc.first_line,
+          	last_line: this.yylineno + 1,
+	        first_column: this.yylloc.first_column,
+            last_column: lines ?
+              	(lines.length === oldLines.length ? this.yylloc.first_column : 0)
+				 + oldLines[oldLines.length - lines.length].length - lines[0].length :
               this.yylloc.first_column - len
-          };
+        };
 
         if (this.options.ranges) {
             this.yylloc.range = [r[0], r[0] + this.yyleng - len];
         }
         return this;
     },
+
     // When called from action, caches matched text and appends it on next action
     more: function () {
         this._more = true;
@@ -226,24 +242,27 @@ RegExpLexer.prototype = {
     less: function (n) {
         this.unput(this.match.slice(n));
     },
-    // displays upcoming input, i.e. for error messages
+
+    // displays already matched input, i.e. for error messages
     pastInput: function () {
         var past = this.matched.substr(0, this.matched.length - this.match.length);
         return (past.length > 20 ? '...':'') + past.substr(-20).replace(/\n/g, "");
     },
+
     // displays upcoming input, i.e. for error messages
     upcomingInput: function () {
         var next = this.match;
         if (next.length < 20) {
             next += this._input.substr(0, 20-next.length);
         }
-        return (next.substr(0,20)+(next.length > 20 ? '...':'')).replace(/\n/g, "");
+        return (next.substr(0,20) + (next.length > 20 ? '...' : '')).replace(/\n/g, "");
     },
-    // displays upcoming input, i.e. for error messages
+
+    // displays the character position where the lexing error occurred, i.e. for error messages
     showPosition: function () {
         var pre = this.pastInput();
         var c = new Array(pre.length + 1).join("-");
-        return pre + this.upcomingInput() + "\n" + c+"^";
+        return pre + this.upcomingInput() + "\n" + c + "^";
     },
 
     // return next match in input
@@ -251,7 +270,9 @@ RegExpLexer.prototype = {
         if (this.done) {
             return this.EOF;
         }
-        if (!this._input) this.done = true;
+        if (!this._input) {
+            this.done = true;
+        }
 
         var token,
             match,
@@ -297,8 +318,11 @@ RegExpLexer.prototype = {
         if (this._input === "") {
             return this.EOF;
         } else {
-            return this.parseError('Lexical error on line '+(this.yylineno+1)+'. Unrecognized text.\n'+this.showPosition(),
-                    {text: "", token: null, line: this.yylineno});
+            return this.parseError('Lexical error on line ' + (this.yylineno + 1) + '. Unrecognized text.\n' + this.showPosition(), {
+                text: "",
+                token: null,
+                line: this.yylineno
+            });
         }
     },
 
@@ -311,19 +335,29 @@ RegExpLexer.prototype = {
             return this.lex();
         }
     },
+
+    // activates a new lexer condition state (pushes the new lexer condition state onto the condition stack)
     begin: function begin (condition) {
         this.conditionStack.push(condition);
     },
+
+	// pop the previously active lexer condition state off the condition stack
     popState: function popState () {
         return this.conditionStack.pop();
     },
+
+	// produce the lexer rule set which is active for the currently active lexer condition state
     _currentRules: function _currentRules () {
         return this.conditions[this.conditionStack[this.conditionStack.length-1]].rules;
     },
+
+ 	// return the currently active lexer condition state; when an index argument is provided it produces the N-th previous condition state, if available
     topState: function () {
         return this.conditionStack[this.conditionStack.length-2];
     },
-    pushState: function begin (condition) {
+
+	// alias for begin(condition)
+    pushState: function pushState (condition) {
         this.begin(condition);
     },
 
@@ -340,11 +374,36 @@ RegExpLexer.prototype = {
         return code;
     },
     generateModuleBody: function generateModule() {
+        var function_descriptions = {
+            setInput: "resets the lexer, sets new input",
+            input: "consumes and returns one char from the input",
+            unput: "unshifts one char (or a string) into the input",
+            more: "When called from action, caches matched text and appends it on next action",
+            reject: "When called from action, signals the lexer that this rule fails to match the input, so the next matching rule (regex) should be tested instead.",
+            less: "retain first n characters of the match",
+            pastInput: "displays already matched input, i.e. for error messages",
+            upcomingInput: "displays upcoming input, i.e. for error messages",
+            showPosition: "displays the character position where the lexing error occurred, i.e. for error messages",
+			test_match: "test the lexed token: return FALSE when not a match, otherwise return token",
+            next: "return next match in input",
+            lex: "return next match that has a token",
+		    begin: "activates a new lexer condition state (pushes the new lexer condition state onto the condition stack)",
+			popState: "pop the previously active lexer condition state off the condition stack",
+			_currentRules: "produce the lexer rule set which is active for the currently active lexer condition state",
+		    topState: "return the currently active lexer condition state; when an index argument is provided it produces the N-th previous condition state, if available",
+		    pushState: "alias for begin(condition)"
+        };
         var out = "{\n";
         var p = [];
+		var descr;
         for (var k in RegExpLexer.prototype) {
             if (RegExpLexer.prototype.hasOwnProperty(k) && k.indexOf("generate") === -1) {
-              p.push(k + ":" + (RegExpLexer.prototype[k].toString() || '""'));
+                // copy the function description as a comment before the implementation; supports multi-line descriptions
+                descr = "\n";
+                if (function_descriptions[k]) {
+                    descr += "// " + function_descriptions[k].replace(/\n/g, "\n\/\/ ") + "\n";
+                }
+                p.push(descr + k + ":" + (RegExpLexer.prototype[k].toString() || '""'));
             }
         }
         out += p.join(",\n");
