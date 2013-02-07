@@ -159,7 +159,7 @@ RegExpLexer.prototype = {
     // resets the lexer, sets new input
     setInput: function (input) {
         this._input = input;
-        this._more = this.done = false;
+        this._more = this._backtrack = this.done = false;
         this.yylineno = this.yyleng = 0;
         this.yytext = this.matched = this.match = '';
         this.conditionStack = ['INITIAL'];
@@ -296,11 +296,17 @@ RegExpLexer.prototype = {
         }
         if (match) {
             lines = match[0].match(/(?:\r\n?|\n).*/g);
-            if (lines) this.yylineno += lines.length;
-            this.yylloc = {first_line: this.yylloc.last_line,
-                           last_line: this.yylineno+1,
-                           first_column: this.yylloc.last_column,
-                           last_column: lines ? lines[lines.length-1].length-lines[lines.length-1].match(/\r?\n?/)[0].length : this.yylloc.last_column + match[0].length};
+	        if (lines) {
+	            this.yylineno += lines.length;
+			}
+	        this.yylloc = {
+	            first_line: this.yylloc.last_line,
+	            last_line: this.yylineno + 1,
+	            first_column: this.yylloc.last_column,
+	            last_column: lines ?
+	                         lines[lines.length - 1].length - lines[lines.length - 1].match(/\r?\n?/)[0].length :
+	                         this.yylloc.last_column + match[0].length
+	        };
             this.yytext += match[0];
             this.match += match[0];
             this.matches = match;
@@ -312,7 +318,9 @@ RegExpLexer.prototype = {
             this._input = this._input.slice(match[0].length);
             this.matched += match[0];
             token = this.performAction.call(this, this.yy, this, rules[index],this.conditionStack[this.conditionStack.length-1]);
-            if (this.done && this._input) this.done = false;
+	        if (this.done && this._input) {
+	            this.done = false;
+	        }
             if (token) return token;
             else return;
         }
