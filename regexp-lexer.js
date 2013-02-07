@@ -58,7 +58,7 @@ function prepareRules(rules, macros, actions, tokens, startConditions, caseless)
         }
         action = rules[i][1];
         if (tokens && action.match(/return '[^']+'/)) {
-            action = action.replace(/return '([^']+)'/, tokenNumberReplacement);
+            action = action.replace(/return '([^']+)'/g, tokenNumberReplacement);
         }
         actions.push('case '+i+':' +action+'\nbreak;');
     }
@@ -149,7 +149,7 @@ RegExpLexer.prototype = {
         }
     },
 
-    // resets the lexer, sets new input 
+    // resets the lexer, sets new input
     setInput: function (input) {
         this._input = input;
         this._more = this._less = this.done = false;
