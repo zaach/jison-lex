@@ -159,7 +159,7 @@ RegExpLexer.prototype = {
     // resets the lexer, sets new input
     setInput: function (input) {
         this._input = input;
-        this._more = this._less = this.done = false;
+        this._more = this.done = false;
         this.yylineno = this.yyleng = 0;
         this.yytext = this.matched = this.match = '';
         this.conditionStack = ['INITIAL'];
