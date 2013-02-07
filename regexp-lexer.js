@@ -286,7 +286,7 @@ RegExpLexer.prototype = {
             this.match = '';
         }
         var rules = this._currentRules();
-        for (var i=0;i < rules.length; i++) {
+        for (var i = 0; i < rules.length; i++) {
             tempMatch = this._input.match(this.rules[rules[i]]);
             if (tempMatch && (!match || tempMatch[0].length > match[0].length)) {
                 match = tempMatch;
@@ -344,17 +344,31 @@ RegExpLexer.prototype = {
 
 	// pop the previously active lexer condition state off the condition stack
     popState: function popState () {
-        return this.conditionStack.pop();
+        var n = this.conditionStack.length - 1;
+        if (n > 0) {
+            return this.conditionStack.pop();
+        } else {
+            return this.conditionStack[0];
+        }
     },
 
 	// produce the lexer rule set which is active for the currently active lexer condition state
     _currentRules: function _currentRules () {
-        return this.conditions[this.conditionStack[this.conditionStack.length-1]].rules;
+		if (this.conditionStack.length && this.conditionStack[this.conditionStack.length - 1]) {
+	        return this.conditions[this.conditionStack[this.conditionStack.length - 1]].rules;
+		} else {
+	        return this.conditions["INITIAL"].rules;
+		}
     },
 
  	// return the currently active lexer condition state; when an index argument is provided it produces the N-th previous condition state, if available
-    topState: function () {
-        return this.conditionStack[this.conditionStack.length-2];
+    topState: function topState (n) {
+		n = this.conditionStack.length - 1 - Math.abs(n || 0);
+		if (n >= 0) {
+	        return this.conditionStack[n];
+		} else {
+			return "INITIAL";
+		}
     },
 
 	// alias for begin(condition)
