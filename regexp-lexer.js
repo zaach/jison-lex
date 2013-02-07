@@ -111,8 +111,8 @@ function buildActions (dict, tokens) {
 
     this.rules = prepareRules(dict.rules, dict.macros, actions, tokens && toks, this.conditions, this.options["case-insensitive"]);
     var fun = actions.join("\n");
-    "yytext yyleng yylineno".split(' ').forEach(function (yy) {
-        fun = fun.replace(new RegExp("("+yy+")", "g"), "yy_.$1");
+    "yytext yyleng yylineno yylloc".split(' ').forEach(function (yy) {
+        fun = fun.replace(new RegExp("\\b("+yy+")\\b", "g"), "yy_.$1");
     });
 
     return Function("yy,yy_,$avoiding_name_collisions,YY_START", fun);
