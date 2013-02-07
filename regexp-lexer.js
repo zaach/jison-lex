@@ -230,6 +230,7 @@ RegExpLexer.prototype = {
         if (this.options.ranges) {
             this.yylloc.range = [r[0], r[0] + this.yyleng - len];
         }
+        this.yyleng = this.yytext.length;
         return this;
     },
 
