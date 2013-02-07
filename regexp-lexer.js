@@ -239,6 +239,22 @@ RegExpLexer.prototype = {
         this._more = true;
         return this;
     },
+
+    // When called from action, signals the lexer that this rule fails to match the input, so the next matching rule (regex) should be tested instead.
+    reject: function () {
+        if (this.options.backtrack_lexer) {
+            this._backtrack = true;
+        } else {
+            return this.parseError('Lexical error on line ' + (this.yylineno + 1) + '. You can only invoke reject() in the lexer when the lexer is of the backtracking persuasion (options.backtrack_lexer = true).\n' + this.showPosition(), {
+                text: "",
+                token: null,
+                line: this.yylineno
+            });
+
+        }
+        return this;
+    },
+
     // retain first n characters of the match
     less: function (n) {
         this.unput(this.match.slice(n));
@@ -266,6 +282,84 @@ RegExpLexer.prototype = {
         return pre + this.upcomingInput() + "\n" + c + "^";
     },
 
+    // test the lexed token: return FALSE when not a match, otherwise return token
+    test_match: function(match, indexed_rule) {
+        var token,
+            lines,
+            backup;
+
+        if (this.options.backtrack_lexer) {
+            // save context
+            backup = {
+                yylineno: this.yylineno,
+                yylloc: {
+                    first_line: this.yylloc.first_line,
+                    last_line: this.last_line,
+                    first_column: this.yylloc.first_column,
+                    last_column: this.yylloc.last_column
+                },
+                yytext: this.yytext,
+                match: this.match,
+                matches: this.matches,
+                matched: this.matched,
+                yyleng: this.yyleng,
+                offset: this.offset,
+                _more: this._more,
+                _input: this._input,
+                yy: this.yy,
+                conditionStack: this.conditionStack.slice(0),
+                done: this.done
+            };
+            if (this.options.ranges) {
+                backup.yylloc.range = this.yylloc.range.slice(0);
+            }
+        }
+
+        lines = match[0].match(/(?:\r\n?|\n).*/g);
+        if (lines) {
+            this.yylineno += lines.length;
+		}
+        this.yylloc = {
+            first_line: this.yylloc.last_line,
+            last_line: this.yylineno + 1,
+            first_column: this.yylloc.last_column,
+            last_column: lines ?
+                         lines[lines.length - 1].length - lines[lines.length - 1].match(/\r?\n?/)[0].length :
+                         this.yylloc.last_column + match[0].length
+        };
+        this.yytext += match[0];
+        this.match += match[0];
+        this.matches = match;
+        this.yyleng = this.yytext.length;
+        if (this.options.ranges) {
+            this.yylloc.range = [this.offset, this.offset += this.yyleng];
+        }
+        this._more = false;
+        this._backtrack = false;
+        this._input = this._input.slice(match[0].length);
+        this.matched += match[0];
+        token = this.performAction.call(this, this.yy, this, indexed_rule, this.conditionStack[this.conditionStack.length - 1]);
+        if (this.done && this._input) {
+            this.done = false;
+        }
+        if (token) {
+            if (this.options.backtrack_lexer) {
+                delete backup;
+            }
+            return token;
+        } else if (this._backtrack) {
+            // recover context
+            for (var k in backup) {
+                this[k] = backup[k];
+            }
+            return false; // rule action called reject() implying the next rule should be tested instead.
+        }
+        if (this.options.backtrack_lexer) {
+            delete backup;
+        }
+        return false;
+    },
+
     // return next match in input
     next: function () {
         if (this.done) {
@@ -278,9 +372,7 @@ RegExpLexer.prototype = {
         var token,
             match,
             tempMatch,
-            index,
-            col,
-            lines;
+            index;
         if (!this._more) {
             this.yytext = '';
             this.match = '';
@@ -291,38 +383,29 @@ RegExpLexer.prototype = {
             if (tempMatch && (!match || tempMatch[0].length > match[0].length)) {
                 match = tempMatch;
                 index = i;
-                if (!this.options.flex) break;
+                if (this.options.backtrack_lexer) {
+                    token = this.test_match(tempMatch, rules[i]);
+                    if (token !== false) {
+                        return token;
+                    } else if (this._backtrack) {
+                        match = false;
+                        continue; // rule action called reject() implying a rule MISmatch.
+                    } else {
+                        // else: this is a lexer rule which consumes input without producing a token (e.g. whitespace)
+                        return false;
+                    }
+                } else if (!this.options.flex) {
+                    break;
+                }
             }
         }
         if (match) {
-            lines = match[0].match(/(?:\r\n?|\n).*/g);
-	        if (lines) {
-	            this.yylineno += lines.length;
-			}
-	        this.yylloc = {
-	            first_line: this.yylloc.last_line,
-	            last_line: this.yylineno + 1,
-	            first_column: this.yylloc.last_column,
-	            last_column: lines ?
-	                         lines[lines.length - 1].length - lines[lines.length - 1].match(/\r?\n?/)[0].length :
-	                         this.yylloc.last_column + match[0].length
-	        };
-            this.yytext += match[0];
-            this.match += match[0];
-            this.matches = match;
-            this.yyleng = this.yytext.length;
-            if (this.options.ranges) {
-                this.yylloc.range = [this.offset, this.offset += this.yyleng];
+            token = this.test_match(match, rules[index]);
+            if (token !== false) {
+                return token;
             }
-            this._more = false;
-            this._input = this._input.slice(match[0].length);
-            this.matched += match[0];
-            token = this.performAction.call(this, this.yy, this, rules[index],this.conditionStack[this.conditionStack.length-1]);
-	        if (this.done && this._input) {
-	            this.done = false;
-	        }
-            if (token) return token;
-            else return;
+            // else: this is a lexer rule which consumes input without producing a token (e.g. whitespace)
+            return false;
         }
         if (this._input === "") {
             return this.EOF;
@@ -338,7 +421,7 @@ RegExpLexer.prototype = {
     // return next match that has a token
     lex: function lex () {
         var r = this.next();
-        if (typeof r !== 'undefined') {
+        if (r) {
             return r;
         } else {
             return this.lex();
