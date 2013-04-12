@@ -54,7 +54,7 @@ exports["test unrecognized char"] = function() {
 
     var lexer = new RegExpLexer(dict, input);
     assert.equal(lexer.lex(), "X");
-    assert["throws"](function(){lexer.lex()}, "bad char");
+    assert.throws(function(){lexer.lex()}, "bad char");
 };
 
 exports["test macro"] = function() {
@@ -920,5 +920,45 @@ exports["test unput location again"] = function() {
                                     last_column: 1,
                                     range: [7, 8]});
 
+};
+
+exports["test backtracking lexer reject() method"] = function() {
+    var dict = {
+        rules: [
+            ["[A-Z]+([0-9]+)", "if (this.matches[1].length) this.reject(); else return 'ID';" ],
+            ["[A-Z]+", "return 'WORD';" ],
+            ["[0-9]+", "return 'NUM';" ]
+        ],
+        options: {backtrack_lexer: true}
+    };
+    var input = "A5";
+
+    var lexer = new RegExpLexer(dict);
+    lexer.setInput(input);
+
+    assert.equal(lexer.lex(), "WORD");
+    assert.equal(lexer.lex(), "NUM");
+};
+
+exports["test lexer reject() exception when not in backtracking mode"] = function() {
+    var dict = {
+        rules: [
+            ["[A-Z]+([0-9]+)", "if (this.matches[1].length) this.reject(); else return 'ID';" ],
+            ["[A-Z]+", "return 'WORD';" ],
+            ["[0-9]+", "return 'NUM';" ]
+        ],
+        options: {backtrack_lexer: false}
+    };
+    var input = "A5";
+
+    var lexer = new RegExpLexer(dict);
+    lexer.setInput(input);
+
+    assert.throws(function() {
+      lexer.lex();
+    },
+    function(err) {
+      return (err instanceof Error) && /You can only invoke reject/.test(err);
+    });
 };
 
