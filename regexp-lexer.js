@@ -2,6 +2,7 @@
 // MIT Licensed
 
 var RegExpLexer = (function () {
+"use strict";
 
 var lexParser = require('lex-parser');
 var version = require('./package.json').version;
@@ -343,9 +344,6 @@ RegExpLexer.prototype = {
             this.done = false;
         }
         if (token) {
-            if (this.options.backtrack_lexer) {
-                delete backup;
-            }
             return token;
         } else if (this._backtrack) {
             // recover context
@@ -353,9 +351,6 @@ RegExpLexer.prototype = {
                 this[k] = backup[k];
             }
             return false; // rule action called reject() implying the next rule should be tested instead.
-        }
-        if (this.options.backtrack_lexer) {
-            delete backup;
         }
         return false;
     },
