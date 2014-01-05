@@ -62,7 +62,7 @@ function processGrammar (file, name) {
     }
 
     var settings = grammar.options || {};
-    if (!settings.moduleType) settings.moduleType = opts.moduleType;
+    if (!settings.moduleType) settings.moduleType = opts['module-type'];
     if (!settings.moduleName && name) settings.moduleName = name.replace(/-\w/g, function (match){ return match.charAt(1).toUpperCase(); });
 
     grammar.options = settings;
