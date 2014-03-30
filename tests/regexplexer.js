@@ -483,7 +483,7 @@ exports["test DJ lexer"] = function() {
         },
 
         "rules": [
-            ["//.*",       "/* ignore comment */"],
+            ["\\/\\/.*",       "/* ignore comment */"],
             ["main\\b",     "return 'MAIN';"],
             ["class\\b",    "return 'CLASS';"],
             ["extends\\b",  "return 'EXTENDS';"],
@@ -626,7 +626,7 @@ exports["test exclusive start conditions"] = function() {
             "EAT": 1,
         },
         rules: [
-            ["//", "this.begin('EAT');" ],
+            ["\\/\\/", "this.begin('EAT');" ],
             [["EAT"], ".", "" ],
             [["EAT"], "\\n", "this.begin('INITIAL');" ],
             ["x", "return 'X';" ],
@@ -651,7 +651,7 @@ exports["test pop start condition stack"] = function() {
             "EAT": 1,
         },
         rules: [
-            ["//", "this.begin('EAT');" ],
+            ["\\/\\/", "this.begin('EAT');" ],
             [["EAT"], ".", "" ],
             [["EAT"], "\\n", "this.popState();" ],
             ["x", "return 'X';" ],
@@ -677,7 +677,7 @@ exports["test star start condition"] = function() {
             "EAT": 1,
         },
         rules: [
-            ["//", "this.begin('EAT');" ],
+            ["\\/\\/", "this.begin('EAT');" ],
             [["EAT"], ".", "" ],
             ["x", "return 'X';" ],
             ["y", "return 'Y';" ],
@@ -700,7 +700,7 @@ exports["test start condition constants"] = function() {
             "EAT": 1,
         },
         rules: [
-            ["//", "this.begin('EAT');" ],
+            ["\\/\\/", "this.begin('EAT');" ],
             [["EAT"], ".", "if (YYSTATE==='EAT') return 'E';" ],
             ["x", "if (YY_START==='INITIAL') return 'X';" ],
             ["y", "return 'Y';" ],
