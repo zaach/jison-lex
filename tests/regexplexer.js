@@ -20,6 +20,22 @@ exports["test basic matchers"] = function() {
     assert.equal(lexer.lex(), "EOF");
 };
 
+exports["test set yy"] = function() {
+    var dict = {
+        rules: [
+           ["x", "return yy.x;" ],
+           ["y", "return 'Y';" ],
+           ["$", "return 'EOF';" ]
+       ]
+    };
+
+    var input = "xxyx";
+
+    var lexer = new RegExpLexer(dict);
+    lexer.setInput(input, { x: 'EX' });
+    assert.equal(lexer.lex(), "EX");
+};
+
 exports["test set input after"] = function() {
     var dict = {
         rules: [

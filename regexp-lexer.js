@@ -147,7 +147,8 @@ RegExpLexer.prototype = {
     },
 
     // resets the lexer, sets new input
-    setInput: function (input) {
+    setInput: function (input, yy) {
+        this.yy = yy || this.yy || {};
         this._input = input;
         this._more = this._backtrack = this.done = false;
         this.yylineno = this.yyleng = 0;
