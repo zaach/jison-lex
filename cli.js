@@ -33,10 +33,9 @@ var opts = require("nomnom")
     callback: function() {
        return version;
     }
-  })
-  .parse();
+  });
 
-exports.main = function () {
+exports.main = function (opts) {
     if (opts.file) {
         var raw = fs.readFileSync(path.normalize(opts.file), 'utf8'),
             name = path.basename((opts.outfile||opts.file)).replace(/\..*$/g,'');
@@ -67,8 +66,7 @@ function processGrammar (file, name) {
 
     grammar.options = settings;
 
-    var lexer = new RegExpLexer(grammar);
-    return lexer.generate(settings);
+    return RegExpLexer.generate(grammar);
 }
 
 function readin (cb) {
@@ -85,4 +83,4 @@ function readin (cb) {
 }
 
 if (require.main === module)
-    exports.main();
+    exports.main(opts.parse());

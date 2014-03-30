@@ -331,6 +331,28 @@ exports["test defined token returns"] = function() {
     assert.equal(lexer.lex(), 4);
 };
 
+exports["test module generator from constructor"] = function() {
+    var dict = {
+        rules: [
+           ["x", "return 'X';" ],
+           ["y", "return 'Y';" ],
+           ["$", "return 'EOF';" ]
+       ]
+    };
+
+    var input = "xxyx";
+
+    var lexerSource = RegExpLexer.generate(dict);
+    eval(lexerSource);
+    lexer.setInput(input);
+
+    assert.equal(lexer.lex(), "X");
+    assert.equal(lexer.lex(), "X");
+    assert.equal(lexer.lex(), "Y");
+    assert.equal(lexer.lex(), "X");
+    assert.equal(lexer.lex(), "EOF");
+};
+
 exports["test module generator"] = function() {
     var dict = {
         rules: [
@@ -419,7 +441,7 @@ exports["test amd module generator"] = function() {
     var input = "xxyx";
 
     var lexer_ = new RegExpLexer(dict);
-    var lexerSource = lexer_.generateCommonJSModule();
+    var lexerSource = lexer_.generateAMDModule();
 
     var lexer;
     var define = function (_, fn) {
