@@ -20,6 +20,22 @@ exports["test basic matchers"] = function() {
     assert.equal(lexer.lex(), "EOF");
 };
 
+exports["test set yy"] = function() {
+    var dict = {
+        rules: [
+           ["x", "return yy.x;" ],
+           ["y", "return 'Y';" ],
+           ["$", "return 'EOF';" ]
+       ]
+    };
+
+    var input = "xxyx";
+
+    var lexer = new RegExpLexer(dict);
+    lexer.setInput(input, { x: 'EX' });
+    assert.equal(lexer.lex(), "EX");
+};
+
 exports["test set input after"] = function() {
     var dict = {
         rules: [
@@ -331,6 +347,28 @@ exports["test defined token returns"] = function() {
     assert.equal(lexer.lex(), 4);
 };
 
+exports["test module generator from constructor"] = function() {
+    var dict = {
+        rules: [
+           ["x", "return 'X';" ],
+           ["y", "return 'Y';" ],
+           ["$", "return 'EOF';" ]
+       ]
+    };
+
+    var input = "xxyx";
+
+    var lexerSource = RegExpLexer.generate(dict);
+    eval(lexerSource);
+    lexer.setInput(input);
+
+    assert.equal(lexer.lex(), "X");
+    assert.equal(lexer.lex(), "X");
+    assert.equal(lexer.lex(), "Y");
+    assert.equal(lexer.lex(), "X");
+    assert.equal(lexer.lex(), "EOF");
+};
+
 exports["test module generator"] = function() {
     var dict = {
         rules: [
@@ -419,7 +457,7 @@ exports["test amd module generator"] = function() {
     var input = "xxyx";
 
     var lexer_ = new RegExpLexer(dict);
-    var lexerSource = lexer_.generateCommonJSModule();
+    var lexerSource = lexer_.generateAMDModule();
 
     var lexer;
     var define = function (_, fn) {
@@ -445,7 +483,7 @@ exports["test DJ lexer"] = function() {
         },
 
         "rules": [
-            ["//.*",       "/* ignore comment */"],
+            ["\\/\\/.*",       "/* ignore comment */"],
             ["main\\b",     "return 'MAIN';"],
             ["class\\b",    "return 'CLASS';"],
             ["extends\\b",  "return 'EXTENDS';"],
@@ -588,7 +626,7 @@ exports["test exclusive start conditions"] = function() {
             "EAT": 1,
         },
         rules: [
-            ["//", "this.begin('EAT');" ],
+            ["\\/\\/", "this.begin('EAT');" ],
             [["EAT"], ".", "" ],
             [["EAT"], "\\n", "this.begin('INITIAL');" ],
             ["x", "return 'X';" ],
@@ -613,7 +651,7 @@ exports["test pop start condition stack"] = function() {
             "EAT": 1,
         },
         rules: [
-            ["//", "this.begin('EAT');" ],
+            ["\\/\\/", "this.begin('EAT');" ],
             [["EAT"], ".", "" ],
             [["EAT"], "\\n", "this.popState();" ],
             ["x", "return 'X';" ],
@@ -639,7 +677,7 @@ exports["test star start condition"] = function() {
             "EAT": 1,
         },
         rules: [
-            ["//", "this.begin('EAT');" ],
+            ["\\/\\/", "this.begin('EAT');" ],
             [["EAT"], ".", "" ],
             ["x", "return 'X';" ],
             ["y", "return 'Y';" ],
@@ -662,7 +700,7 @@ exports["test start condition constants"] = function() {
             "EAT": 1,
         },
         rules: [
-            ["//", "this.begin('EAT');" ],
+            ["\\/\\/", "this.begin('EAT');" ],
             [["EAT"], ".", "if (YYSTATE==='EAT') return 'E';" ],
             ["x", "if (YY_START==='INITIAL') return 'X';" ],
             ["y", "return 'Y';" ],
@@ -962,3 +1000,22 @@ exports["test lexer reject() exception when not in backtracking mode"] = functio
     });
 };
 
+exports["test yytext state after unput"] = function() {
+    var dict = {
+        rules: [
+            ["cat4", "this.unput('4'); return 'CAT';" ],
+            ["4", "return 'NUMBER';" ],
+            ["$", "return 'EOF';"]
+        ]
+    };
+
+    var input = "cat4";
+
+    var lexer = new RegExpLexer(dict);
+    lexer.setInput(input);
+    assert.equal(lexer.lex(), "CAT");
+    /*the yytext should be 'cat' since we unput '4' from 'cat4' */
+    assert.equal(lexer.yytext, "cat");
+    assert.equal(lexer.lex(), "NUMBER");
+    assert.equal(lexer.lex(), "EOF");
+};
