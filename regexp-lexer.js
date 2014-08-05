@@ -39,6 +39,12 @@ function prepareRules(rules, macros, actions, tokens, startConditions, caseless)
             // Add to explicit start conditions
             conditions = rules[i].shift();
             for (k=0;k<conditions.length;k++) {
+                if (!startConditions.hasOwnProperty(conditions[k])) {
+                    startConditions[conditions[k]] = {
+                        rules: [], inclusive: false
+                    };
+                    console.warn('Lexer Warning : "' + conditions[k] + '" start condition should be defined as %s or %x');
+                }
                 startConditions[conditions[k]].rules.push(i);
             }
         }
@@ -170,6 +176,15 @@ RegExpLexer.prototype = {
     // consumes and returns one char from the input
     input: function () {
         var ch = this._input[0];
+        if ( ch == '\r' && this._input[1] == '\n' ) {
+            ch += '\n'; 
+            this.yyleng++;
+            this.offset++;
+            this._input = this._input.slice(1);
+            if (this.options.ranges) {
+                this.yylloc.range[1]++;
+            }
+        }
         this.yytext += ch;
         this.yyleng++;
         this.offset++;
