@@ -247,7 +247,7 @@ exports["test yytext overwrite"] = function() {
     assert.equal(lexer.yytext, "hi der");
 };
 
-exports["test yylineno"] = function() {
+exports["test yylineno with test_match"] = function() {
     var dict = {
         rules: [
            ["\\s+", "/* skip whitespace */" ],
@@ -257,7 +257,6 @@ exports["test yylineno"] = function() {
     };
 
     var input = "x\nxy\n\n\nx";
-
     var lexer = new RegExpLexer(dict, input);
     assert.equal(lexer.yylineno, 0);
     assert.equal(lexer.lex(), "x");
@@ -268,6 +267,48 @@ exports["test yylineno"] = function() {
     assert.equal(lexer.lex(), "x");
     assert.equal(lexer.yylineno, 4);
 };
+
+exports["test yylineno with input"] = function() {
+    var dict = {
+        rules: [
+           ["\\s+", "/* skip whitespace */" ],
+           ["x", "return 'x';" ],
+           ["y", "return 'y';" ]
+       ]
+    };
+
+    // windows style
+    var input = "a\r\nb";
+    var lexer = new RegExpLexer(dict, input);
+    assert.equal(lexer.yylineno, 0);
+    assert.equal(lexer.input(), "a");
+    assert.equal(lexer.input(), "\r\n");
+    assert.equal(lexer.yylineno, 1);
+    assert.equal(lexer.input(), "b");
+    assert.equal(lexer.yylineno, 1);
+
+    // linux style
+    var input = "a\nb";
+    var lexer = new RegExpLexer(dict, input);
+    assert.equal(lexer.yylineno, 0);
+    assert.equal(lexer.input(), "a");
+    assert.equal(lexer.input(), "\n");
+    assert.equal(lexer.yylineno, 1);
+    assert.equal(lexer.input(), "b");
+    assert.equal(lexer.yylineno, 1);
+
+    // mac style
+    var input = "a\rb";
+    var lexer = new RegExpLexer(dict, input);
+    assert.equal(lexer.yylineno, 0);
+    assert.equal(lexer.input(), "a");
+    assert.equal(lexer.input(), "\r");
+    assert.equal(lexer.yylineno, 1);
+    assert.equal(lexer.input(), "b");
+    assert.equal(lexer.yylineno, 1);
+
+};
+
 
 exports["test yylloc"] = function() {
     var dict = {
