@@ -7,7 +7,7 @@ var lexParser = require('lex-parser');
 var version = require('./package.json').version;
 
 // expand macros and convert matchers to RegExp's
-function prepareRules(rules, macros, actions, tokens, startConditions, caseless) {
+function prepareRules(rules, macros, actions, tokens, startConditions, caseless, caseHelper) {
     var m,i,k,action,conditions,
         newRules = [];
 
@@ -60,8 +60,13 @@ function prepareRules(rules, macros, actions, tokens, startConditions, caseless)
         if (tokens && action.match(/return '[^']+'/)) {
             action = action.replace(/return '([^']+)'/g, tokenNumberReplacement);
         }
-        actions.push('case ' + i + ':' + action + '\nbreak;');
+        if (/^return (?:'[^\']+'|\d+)$/.test(action))
+          caseHelper.push(i + ':' + action.substr(7));
+        else
+          actions.push('case ' + i + ':' + action + '\nbreak;');
     }
+    actions.push('default:');
+    actions.push('  return $case_helper[$avoiding_name_collisions]');
     actions.push("}");
 
     return newRules;
@@ -100,6 +105,7 @@ function buildActions (dict, tokens) {
     var actions = [dict.actionInclude || '', "var YYSTATE=YY_START;"];
     var tok;
     var toks = {};
+    var caseHelper = [];
 
     for (tok in tokens) {
         toks[tokens[tok]] = tok;
@@ -109,11 +115,13 @@ function buildActions (dict, tokens) {
         dict.rules.push([".", "console.log(yytext);"]);
     }
 
-    this.rules = prepareRules(dict.rules, dict.macros, actions, tokens && toks, this.conditions, this.options["case-insensitive"]);
+    this.rules = prepareRules(dict.rules, dict.macros, actions, tokens && toks, this.conditions, this.options["case-insensitive"], caseHelper);
     var fun = actions.join("\n");
     "yytext yyleng yylineno yylloc".split(' ').forEach(function (yy) {
         fun = fun.replace(new RegExp("\\b(" + yy + ")\\b", "g"), "yy_.$1");
     });
+
+    this.moduleInclude = "var $case_helper={" + caseHelper.join(",") + "};";
 
     return "function anonymous(yy,yy_,$avoiding_name_collisions,YY_START) {" + fun + "\n}";
 }
@@ -484,7 +492,7 @@ function processGrammar(dict, tokens) {
     opts.performAction = buildActions.call(opts, dict, tokens);
     opts.conditionStack = ['INITIAL'];
 
-    opts.moduleInclude = (dict.moduleInclude || '').trim();
+    opts.moduleInclude = (opts.moduleInclude || '') + (dict.moduleInclude || '').trim();
     return opts;
 }
 
