@@ -144,9 +144,11 @@ function buildActions (dict, tokens) {
         fun = fun.replace(new RegExp("\\b(" + yy + ")\\b", "g"), "yy_.$1");
     });
 
-    this.moduleInclude = "var $case_helper = {\n" + caseHelper.join(",") + "\n};";
+    return {
+        caseHelperInclude: "var $case_helper = {\n" + caseHelper.join(",") + "\n};",
 
-    return "function anonymous(yy,yy_,$avoiding_name_collisions,YY_START) {\n" + fun + "\n}";
+        actions: "function anonymous(yy,yy_,$avoiding_name_collisions,YY_START) {\n" + fun + "\n}"
+    };
 }
 
 function RegExpLexer (dict, input, tokens) {
@@ -559,10 +561,12 @@ function processGrammar(dict, tokens) {
     opts.conditions = prepareStartConditions(dict.startConditions);
     opts.conditions.INITIAL = {rules:[], inclusive:true};
 
-    opts.performAction = buildActions.call(opts, dict, tokens);
+    var code = buildActions.call(opts, dict, tokens);
+    opts.performAction = code.actions;
+
     opts.conditionStack = ['INITIAL'];
 
-    opts.moduleInclude = (opts.moduleInclude || '') + (dict.moduleInclude || '').trim();
+    opts.moduleInclude = (opts.moduleInclude || '') + code.caseHelperInclude + (dict.moduleInclude || '').trim();
     return opts;
 }
 
