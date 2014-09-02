@@ -81,9 +81,9 @@ function prepareRules(rules, macros, actions, tokens, startConditions, caseless,
         var match_nr = /^return\s+('[^\']+'|\d+);?$/.exec(action);
         // Only aggregate simple lexer actions when they apply to *all* start conditions equally:
         if (match_nr && (active_conditions.length === 0 || (active_conditions.length === 1 && active_conditions[0] === '*'))) {
-            caseHelper.push([i, ':', code, match_nr[1]].join(' '));
+            caseHelper.push([].concat(i, ':', code, match_nr[1]).join(' '));
         } else {
-            actions.push(['case', i, ':', code, action, '\nbreak;'].join(' '));
+            actions.push([].concat('case', i, ':', code, action, '\nbreak;').join(' '));
         }
     }
     actions.push('default:');
