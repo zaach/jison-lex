@@ -87,7 +87,7 @@ function prepareRules(rules, macros, actions, tokens, startConditions, caseless,
         }
     }
     actions.push('default:');
-    actions.push('  return $case_helper[$avoiding_name_collisions];');
+    actions.push('  return this.simpleCaseActionClusters[$avoiding_name_collisions];');
     actions.push("}");
 
     return newRules;
@@ -145,7 +145,7 @@ function buildActions (dict, tokens) {
     });
 
     return {
-        caseHelperInclude: "var $case_helper = {\n" + caseHelper.join(",") + "\n};",
+        caseHelperInclude: "{\n" + caseHelper.join(",") + "\n}",
 
         actions: "function anonymous(yy,yy_,$avoiding_name_collisions,YY_START) {\n" + fun + "\n}"
     };
@@ -563,10 +563,11 @@ function processGrammar(dict, tokens) {
 
     var code = buildActions.call(opts, dict, tokens);
     opts.performAction = code.actions;
+    opts.caseHelperInclude = code.caseHelperInclude;
 
     opts.conditionStack = ['INITIAL'];
 
-    opts.moduleInclude = (opts.moduleInclude || '') + code.caseHelperInclude + (dict.moduleInclude || '').trim();
+    opts.moduleInclude = (opts.moduleInclude || '') + (dict.moduleInclude || '').trim();
     return opts;
 }
 
@@ -626,6 +627,7 @@ function generateModuleBody(opt) {
     }
 
     out += ",\nperformAction: " + String(opt.performAction);
+    out += ",\nsimpleCaseActionClusters: " + String(opt.caseHelperInclude);
     out += ",\nrules: [" + opt.rules + "]";
     out += ",\nconditions: " + JSON.stringify(opt.conditions);
     out += "\n})";
