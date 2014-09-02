@@ -718,6 +718,30 @@ exports["test start condition constants"] = function() {
     assert.equal(lexer.lex(), "EOF");
 };
 
+exports["test start condition & warning"] = function() {
+    var dict = {
+        startConditions: {
+            "INITIAL": 0,
+        },
+        rules: [
+            ["\\/\\/", "this.begin('EAT');" ],
+            [["EAT"], ".", "if (YYSTATE==='EAT') return 'E';" ],
+            ["x", "if (YY_START==='INITIAL') return 'X';" ],
+            ["y", "return 'Y';" ],
+            [["*"],"$", "return 'EOF';" ]
+        ]
+    };
+    var input = "xy//y";
+
+    var lexer = new RegExpLexer(dict);
+    lexer.setInput(input);
+
+    assert.equal(lexer.lex(), "X");
+    assert.equal(lexer.lex(), "Y");
+    assert.equal(lexer.lex(), "E");
+    assert.equal(lexer.lex(), "EOF");
+};
+
 exports["test unicode encoding"] = function() {
     var dict = {
         rules: [

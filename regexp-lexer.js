@@ -23,7 +23,7 @@ function prepareRules(rules, macros, actions, tokens, startConditions, caseless)
     actions.push('switch($avoiding_name_collisions) {');
 
     for (i=0;i < rules.length; i++) {
-        active_conditions=[];
+        active_conditions = [];
         if (Object.prototype.toString.apply(rules[i][0]) !== '[object Array]') {
             // implicit add to all inclusive start conditions
             for (k in startConditions) {
@@ -42,7 +42,13 @@ function prepareRules(rules, macros, actions, tokens, startConditions, caseless)
         } else {
             // Add to explicit start conditions
             conditions = rules[i].shift();
-            for (k=0;k<conditions.length;k++) {
+            for (k = 0; k < conditions.length; k++) {
+                if (!startConditions.hasOwnProperty(conditions[k])) {
+                    startConditions[conditions[k]] = {
+                        rules: [], inclusive: false
+                    };
+                    console.warn('Lexer Warning : "' + conditions[k] + '" start condition should be defined as %s or %x; assuming %x now.');
+                }
                 active_conditions.push(conditions[k]);
                 startConditions[conditions[k]].rules.push(i);
             }
@@ -538,7 +544,7 @@ function processGrammar(dict, tokens) {
     opts.moduleName = opts.options.moduleName;
 
     opts.conditions = prepareStartConditions(dict.startConditions);
-    opts.conditions.INITIAL = {rules:[],inclusive:true};
+    opts.conditions.INITIAL = {rules:[], inclusive:true};
 
     opts.performAction = buildActions.call(opts, dict, tokens);
     opts.conditionStack = ['INITIAL'];
