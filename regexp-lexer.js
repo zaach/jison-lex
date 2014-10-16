@@ -193,7 +193,7 @@ RegExpLexer.prototype = {
         var len = ch.length;
         var lines = ch.split(/(?:\r\n?|\n)/g);
 
-        this._input.unCh(len);
+        this._input.unCh(len, ch);
         this.yytext = this.yytext.substr(0, this.yytext.length - len);
         //this.yyleng -= len;
         this.offset -= len;
