@@ -13,6 +13,7 @@ test:
 
 
 clean:
+	-rm -rf node_modules/
 
 superclean: clean
 	-find . -type d -name 'node_modules' -exec rm -rf "{}" \;
