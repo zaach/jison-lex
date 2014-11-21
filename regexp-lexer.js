@@ -257,14 +257,8 @@ RegExpLexer.prototype = {
 
     // displays upcoming input, i.e. for error messages
     upcomingInput: function () {
-        if (!this.done) {
-            var next = this.match;
-            if (next.length < 20) {
-                next += this._input.toString().substr(0, 20 - next.length);
-            }
-            return (next.substr(0, 20) + (next.length > 20 ? '...' : '')).replace(/\n/g, "");
-        }
-        return '';
+        var next = this._input.input.substr(this._input.position, this._input.input.length - 1);
+        return (next.substr(0, 20) + (next.length > 20 ? '...' : '')).replace(/\n/g, "");
     },
 
     // displays the character position where the lexing error occurred, i.e. for error messages
