@@ -78,10 +78,9 @@ function prepareRules(rules, macros, actions, tokens, startConditions, caseless,
         code = code.concat(rules[i][0]);
         code = code.concat('*/', '\n');
         
-        var match_nr = /^return\s+('[^\']+'|\d+);?$/.exec(action);
-        // Only aggregate simple lexer actions when they apply to *all* start conditions equally:
-        if (match_nr && (active_conditions.length === 0 || (active_conditions.length === 1 && active_conditions[0] === '*'))) {
-            caseHelper.push([].concat(i, ':', code, match_nr[1]).join(' '));
+        var match_nr = /^return\s+('[^\']+'|\d+)\s*;?$/.exec(action.trim());
+        if (match_nr) {
+            caseHelper.push([].concat(code, i, ':', match_nr[1]).join(' ').replace(/[\n]/g, '\n  '));
         } else {
             actions.push([].concat('case', i, ':', code, action, '\nbreak;').join(' '));
         }
@@ -287,9 +286,29 @@ RegExpLexer.prototype = {
         this.match += ch;
         this.matched += ch;
         // Count the linenumber up when we hit the LF (or a stand-alone CR).
-        // On CRLF, the linenumber is incremented when you fetch the LF:
-        // the CR is hence 'assigned' to the previous line.
-        var lines = this._input.match(/^(?:\r[^\n]|\r$|\n)/);
+        // On CRLF, the linenumber is incremented when you fetch the CR or the CRLF combo
+        // and we advance immediately past the LF as well, returning both together as if 
+        // it was all a single 'character' only.
+        var slice_len = 1;
+        var lines = false;
+        if (ch === '\n') {
+            lines = true;
+        } else if (ch === '\r') {
+            lines = true;
+            var ch2 = this._input[1];
+            if (ch2 === '\n') {
+                slice_len++;
+                ch += ch2;
+                this.yytext += ch2;
+                this.yyleng++;
+                this.offset++;
+                this.match += ch2;
+                this.matched += ch2;
+                if (this.options.ranges) {
+                    this.yylloc.range[1]++;
+                }
+            }
+        } 
         if (lines) {
             this.yylineno++;
             this.yylloc.last_line++;
@@ -300,7 +319,7 @@ RegExpLexer.prototype = {
             this.yylloc.range[1]++;
         }
 
-        this._input = this._input.slice(1);
+        this._input = this._input.slice(slice_len);
         return ch;
     },
 
