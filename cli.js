@@ -4,7 +4,7 @@ var version = require('./package.json').version;
 
 var path = require('path');
 var fs = require('fs');
-var lexParser = require('./lex-parser');
+var lexParser = require('lex-parser');
 var RegExpLexer = require('./regexp-lexer.js');
 
 
