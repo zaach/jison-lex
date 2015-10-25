@@ -12,9 +12,13 @@ function prepareRules(rules, macros, actions, tokens, startConditions, caseless,
         active_conditions,
         newRules = [];
 
-    if (macros) {
-        macros = prepareMacros(macros);
-    }
+    // Depending on the location within the regex we need different expansions of the macros,
+    // hence precalcing the expansions is out for now; besides the number of macros is usually 
+    // relatively small enough that a naive approach to expansion is fine performance-wise anyhow:
+    // 
+    // if (macros) {
+    //     macros = prepareMacros(macros);
+    // }
 
     function tokenNumberReplacement (str, token) {
         return 'return ' + (tokens[token] || "'" + token + "'");
@@ -56,11 +60,7 @@ function prepareRules(rules, macros, actions, tokens, startConditions, caseless,
 
         m = rules[i][0];
         if (typeof m === 'string') {
-            for (k in macros) {
-                if (macros.hasOwnProperty(k)) {
-                    m = m.split('{' + k + '}').join('(' + macros[k] + ')');
-                }
-            }
+            m = expandMacros(m, macros);
             m = new RegExp('^(?:' + m + ')', caseless ? 'i' : '');
         }
         newRules.push(m);
@@ -95,21 +95,103 @@ function prepareRules(rules, macros, actions, tokens, startConditions, caseless,
 // expand macros within macros
 function prepareMacros (macros) {
     var cont = true,
-        m,i,k,mnew;
+        m, i, k, mnew;
     while (cont) {
         cont = false;
-        for (i in macros) if (macros.hasOwnProperty(i)) {
-            m = macros[i];
-            for (k in macros) if (macros.hasOwnProperty(k) && i !== k) {
-                mnew = m.split('{' + k + '}').join('(' + macros[k] + ')');
-                if (mnew !== m) {
-                    cont = true;
-                    macros[i] = mnew;
+        for (i in macros) {
+            if (macros.hasOwnProperty(i)) {
+                m = macros[i];
+                for (k in macros) {
+                    if (macros.hasOwnProperty(k) && i !== k) {
+                        mnew = m.split('{' + k + '}').join('(' + macros[k] + ')');
+                        if (mnew !== m) {
+                            cont = true;
+                            macros[i] = mnew;
+                        }
+                    }
                 }
             }
         }
     }
     return macros;
+}
+
+// expand macros in a regex; expands them recursively
+function expandMacros(src, macros) {
+    var i, m;
+
+    // Pretty brutal conversion of 'regex' in macro back to raw set: strip outer [...] when they're there;
+    // ditto for inner combos of sets, i.e. `]|[` as in `[0-9]|[a-z]`.
+    // 
+    // Of course this brutish approach is NOT SMART enough to cope with *negated* sets such as
+    // `[^0-9]` in nested macros!
+    function reduceRegexToSet(s) {
+        // First make sure legal regexes such as `[-@]` or `[@-]` get their hypens at the edges 
+        // properly escaped as they'll otherwise produce havoc when being combined into new 
+        // sets thanks to macro expansion inside the outer regex set expression.
+        var m = s.split('\\\\'); // help us find out which chars in there are truly escaped 
+        for (var i = 0, len = m.length; i < len; i++) {
+            s = ' ' + m[i] + ' '; // make our life easier down the lane...
+
+            s = s.replace(/([^\\])\[-/, '$1[\\-').replace(/-\]/, '\\-]');
+
+            // catch the remains of constructs like `[0-9]|[a-z]`  
+            s = s.replace(/\]\|\[/g, '');
+
+            // Also remove the outer brackets of any included set (which came in via macro expansion);
+            // we know that the ones we'll see be either escaped or raw; it's the raw ones we want
+            // to wipe out.
+            s = s.replace(/([^\\])\[/, '$1').replace(/([^\\])\]/, '$1');
+
+            m[i] = s.substr(1, s.length - 2);
+        }
+        s = m.join('\\\\');
+        return s;
+    }
+
+    function expandMacroInSet(i) {
+        var k, a;
+        var m = macros[i];
+
+        for (k in macros) {
+            if (macros.hasOwnProperty(k) && i !== k) {
+                a = m.split('{' + k + '}');
+                if (a.length > 1) {
+                    m = a.join(expandMacroInSet(k));
+                }
+            }
+        }
+
+        return m;
+    }
+
+    function expandMacroElsewhere(i) {
+        var k, a;
+        var m = macros[i];
+
+        for (k in macros) {
+            if (macros.hasOwnProperty(k) && i !== k) {
+                a = m.split('{' + k + '}');
+                if (a.length > 1) {
+                    m = a.join('(' + expandMacroElsewhere(k) + ')');
+                }
+            }
+        }
+        return m;
+    }
+
+    for (i in macros) {
+        if (macros.hasOwnProperty(i)) {
+            m = macros[i];
+
+            // first process the macros inside [...] set expressions:
+            src = src.split('{[{' + i + '}]}').join(reduceRegexToSet(expandMacroInSet(i)));
+            // then process the other macro occurrences in the regex:
+            src = src.split('{' + i + '}').join('(' + expandMacroElsewhere(i) + ')');
+        }
+    }
+
+    return src;
 }
 
 function prepareStartConditions (conditions) {
@@ -271,11 +353,13 @@ RegExpLexer.prototype = {
     EOF: 1,
     ERROR: 2,
 
+    // JisonLexerError: JisonLexerError, 
+
     parseError: function parseError(str, hash) {
         if (this.yy.parser) {
             return this.yy.parser.parseError(str, hash) || this.ERROR;
         } else {
-            throw new JisonLexerError(str);
+            throw new this.JisonLexerError(str);
         }
     },
 
@@ -749,6 +833,7 @@ function generateModuleBody(opt) {
         out += ',\noptions: ' + JSON.stringify(opt.options, null, 2);
     }
 
+    out += ',\nJisonLexerError: JisonLexerError';
     out += ',\nperformAction: ' + String(opt.performAction);
     out += ',\nsimpleCaseActionClusters: ' + String(opt.caseHelperInclude);
     out += ',\nrules: [\n' + opt.rules.join(',\n') + '\n]';
@@ -773,7 +858,7 @@ function generateModule(opt) {
     }
 
     out.push(
-        'lexer.JisonLexerError = JisonLexerError;',
+        '// lexer.JisonLexerError = JisonLexerError;',
         'return lexer;', 
         '})();'
     );
@@ -795,7 +880,7 @@ function generateAMDModule(opt) {
     }
 
     out.push(
-        'lexer.JisonLexerError = JisonLexerError;',
+        '// lexer.JisonLexerError = JisonLexerError;',
         'return lexer;',
         '});'
     );
