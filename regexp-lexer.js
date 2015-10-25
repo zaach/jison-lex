@@ -268,14 +268,11 @@ function RegExpLexer (dict, input, tokens) {
 
             var lexer = eval(source);
             // When we do NOT crash, we found/killed the problem area just before this call!
-            //console.log('RegExpLexer: CULPRIT: ', description, src_exception);
             if (src_exception && description) {
                 src_exception.message += '\n        (' + description + ')';
             }
-            //console.log('RegExpLexer: CULPRIT: ', description, src_exception);
             return lexer;
         } catch (ex) {
-            //console.log('bonko @ RegExpLexer: ', description, ex, ex.stack);
             // if (src_exception) {
             //     src_exception.message += '\n        (' + description + ': ' + ex.message + ')';
             // }
