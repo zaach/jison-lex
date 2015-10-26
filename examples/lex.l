@@ -1,6 +1,9 @@
 
-NAME              [a-zA-Z_][a-zA-Z0-9_-]*
-BR                \r\n|\n|\r
+NAME                                    [a-zA-Z_](?:[a-zA-Z0-9_-]*[a-zA-Z0-9_])?
+ID                                      [a-zA-Z_][a-zA-Z0-9_]*
+DECIMAL_NUMBER                          [1-9][0-9]*
+HEX_NUMBER                              "0"[xX][0-9a-fA-F]+
+BR                                      \r\n|\n|\r
 
 %s indented trail rules
 %x code start_condition options conditions action
@@ -17,40 +20,40 @@ BR                \r\n|\n|\r
 <action>"{"                           yy.depth++; return '{'
 <action>"}"                           yy.depth == 0 ? this.begin('trail') : yy.depth--; return '}'
 
-<conditions>{NAME}                    return 'NAME';
+<conditions>{ID}                      return 'NAME';
 <conditions>">"                       this.popState(); return '>';
 <conditions>","                       return ',';
 <conditions>"*"                       return '*';
 
 <rules>{BR}+                          /* */
 <rules>\s+{BR}+                       /* */
-<rules>\s+                            this.begin('indented')
-<rules>"%%"                           this.begin('code'); return '%%'
-<rules>[a-zA-Z0-9_]+                  return 'CHARACTER_LIT'
+<rules>\s+                            this.begin('indented');
+<rules>"%%"                           this.begin('code'); return '%%';
+<rules>[a-zA-Z0-9_]+                  return 'CHARACTER_LIT';
 
-<options>{NAME}                       yy.options[yytext] = true
-<options>{BR}+                        this.begin('INITIAL')
-<options>\s+{BR}+                     this.begin('INITIAL')
+<options>{NAME}                       yy.options[yytext] = true;
+<options>{BR}+                        this.begin('INITIAL');
+<options>\s+{BR}+                     this.begin('INITIAL');
 <options>\s+                          /* empty */
 
-<start_condition>{NAME}               return 'START_COND'
-<start_condition>{BR}+                this.begin('INITIAL')
-<start_condition>\s+{BR}+             this.begin('INITIAL')
+<start_condition>{ID}                 return 'START_COND';
+<start_condition>{BR}+                this.begin('INITIAL');
+<start_condition>\s+{BR}+             this.begin('INITIAL');
 <start_condition>\s+                  /* empty */
 
-<trail>.*{BR}+                        this.begin('rules')
+<trail>.*{BR}+                        this.begin('rules');
 
-<indented>"{"                         yy.depth = 0; this.begin('action'); return '{'
-<indented>"%{"(.|{BR})*?"%}"          this.begin('trail'); yytext = yytext.substr(2, yytext.length-4);return 'ACTION'
-"%{"(.|{BR})*?"%}"                    yytext = yytext.substr(2, yytext.length-4); return 'ACTION'
-<indented>.+                          this.begin('rules'); return 'ACTION'
+<indented>"{"                         yy.depth = 0; this.begin('action'); return '{';
+<indented>"%{"(.|{BR})*?"%}"          this.begin('trail'); yytext = yytext.substr(2, yytext.length - 4); return 'ACTION';
+"%{"(.|{BR})*?"%}"                    yytext = yytext.substr(2, yytext.length - 4); return 'ACTION';
+<indented>.+                          this.begin('rules'); return 'ACTION';
 
 "/*"(.|\n|\r)*?"*/"             /* ignore */
 "//".*                          /* ignore */
 
 {BR}+                           /* */
 \s+                             /* */
-{NAME}                          return 'NAME';
+{ID}                            return 'NAME';
 \"("\\\\"|'\"'|[^"])*\"         yytext = yytext.replace(/\\"/g,'"'); return 'STRING_LIT';
 "'"("\\\\"|"\'"|[^'])*"'"       yytext = yytext.replace(/\\'/g,"'"); return 'STRING_LIT';
 "|"                             return '|';
@@ -78,7 +81,7 @@ BR                \r\n|\n|\r
 "%x"                            this.begin('start_condition'); return 'START_EXC';
 "%%"                            this.begin('rules'); return '%%';
 "{"\d+(","\s?\d+|",")?"}"       return 'RANGE_REGEX';
-"{"{NAME}"}"                    return 'NAME_BRACE';
+"{"{ID}"}"                      return 'NAME_BRACE';
 "{"                             return '{';
 "}"                             return '}';
 .                               /* ignore bad characters */

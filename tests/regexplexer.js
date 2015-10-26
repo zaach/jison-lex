@@ -519,7 +519,7 @@ exports["test DJ lexer"] = function() {
     "lex": {
         "macros": {
             "digit": "[0-9]",
-            "id": "[a-zA-Z][a-zA-Z0-9]*"
+            "id": "[a-zA-Z_][a-zA-Z0-9_]*"
         },
 
         "rules": [
@@ -554,7 +554,7 @@ exports["test DJ lexer"] = function() {
             ["\\)",        "return 'RPAREN';"],
             [";",          "return 'SEMICOLON';"],
             ["\\s+",       "/* skip whitespace */"],
-            [".",          "print('Illegal character');throw 'Illegal character';"],
+            [".",          "print('Illegal character'); throw 'Illegal character';"],
             ["$",          "return 'ENDOFFILE';"]
         ]
     }
