@@ -289,6 +289,20 @@ function RegExpLexer (dict, input, tokens) {
             if (src_exception && description) {
                 src_exception.message += '\n        (' + description + ')';
             }
+
+            // patch the pre and post handlers in there, now that we have some live code to work with:
+            if (opts.options) {
+                var pre = opts.options.pre_lex;
+                var post = opts.options.post_lex;
+                // since JSON cannot encode functions, we'll have to do it manually now:
+                if (typeof opts.options.pre_lex === 'function') {
+                    lexer.options.pre_lex = opts.options.pre_lex;
+                }
+                if (typeof opts.options.post_lex === 'function') {
+                    lexer.options.post_lex = opts.options.post_lex;
+                }
+            }
+
             return lexer;
         } catch (ex) {
             // if (src_exception) {
@@ -371,7 +385,7 @@ RegExpLexer.prototype = {
     // JisonLexerError: JisonLexerError, 
 
     parseError: function parseError(str, hash) {
-        if (this.yy.parser) {
+        if (this.yy.parser && typeof this.yy.parser.parseError === 'function') {
             return this.yy.parser.parseError(str, hash) || this.ERROR;
         } else {
             throw new this.JisonLexerError(str);
@@ -401,6 +415,10 @@ RegExpLexer.prototype = {
 
     // consumes and returns one char from the input
     input: function () {
+        if (!this._input) {
+            this.done = true;
+            return null;
+        }
         var ch = this._input[0];
         this.yytext += ch;
         this.yyleng++;
@@ -477,6 +495,7 @@ RegExpLexer.prototype = {
             this.yylloc.range = [r[0], r[0] + this.yyleng - len];
         }
         this.yyleng = this.yytext.length;
+        this.done = false;
         return this;
     },
 
@@ -498,7 +517,8 @@ RegExpLexer.prototype = {
                 text: this.match,
                 token: null,
                 line: this.yylineno,
-                loc: this.yylloc
+                loc: this.yylloc,
+                lexer: this
             }) || this.ERROR);
         }
         return this;
@@ -682,10 +702,11 @@ RegExpLexer.prototype = {
                 text: this.match + this._input,
                 token: null,
                 line: this.yylineno,
-                loc: this.yylloc
+                loc: this.yylloc,
+                lexer: this
             }) || this.ERROR;
             if (token === this.ERROR) {
-                // we can try to recover from a lexer error that parseError() did not 'recover' for us, by moving forward one character at a time:
+                // we can try to recover from a lexer error that parseError() did not 'recover' for us, by moving forward at least one character at a time:
                 if (!this.match.length) {
                     this.input();
                 }
@@ -853,7 +874,20 @@ function generateModuleBody(opt) {
     out += p.join(',\n');
 
     if (opt.options) {
-        out += ',\noptions: ' + JSON.stringify(opt.options, null, 2);
+        var pre = opt.options.pre_lex;
+        var post = opt.options.post_lex;
+        // since JSON cannot encode functions, we'll have to do it manually at run-time, i.e. later on:
+        opt.options.pre_lex = (pre ? true : undefined);
+        opt.options.post_lex = (post ? true : undefined);
+
+        var js = JSON.stringify(opt.options, null, 2);
+        js = js.replace(/  \"([a-zA-Z_][a-zA-Z0-9_]*)\": /g, "  $1: ");
+
+        // and restore the original:
+        opt.options.pre_lex = pre;
+        opt.options.post_lex = post;
+        
+        out += ',\noptions: ' + js;
     }
 
     out += ',\nJisonLexerError: JisonLexerError';

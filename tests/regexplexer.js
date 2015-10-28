@@ -1,34 +1,6 @@
 var RegExpLexer = require("../regexp-lexer"),
     assert = require("assert");
 
-exports["test predefined constants"] = function() {
-    var dict = {
-        rules: [
-           ["x", "return 't';" ]
-       ]
-    };
-
-    var input = "xxx";
-
-    var lexer = new RegExpLexer(dict);
-    assert.equal(lexer.EOF, 1, "EOF");
-    assert.equal(lexer.ERROR, 2, "ERROR");
-    lexer.setInput(input);
-    assert.equal(lexer.lex(), "t");
-    assert.equal(lexer.yytext, "x");
-    assert.equal(lexer.lex(), "t");
-    assert.equal(lexer.yytext, "x");
-    assert.equal(lexer.lex(), "t");
-    assert.equal(lexer.yytext, "x");
-    assert.equal(lexer.lex(), lexer.EOF);
-    assert.equal(lexer.yytext, "");
-    // and then the lexer keeps on spitting out EOF tokens ad nauseam:
-    assert.equal(lexer.lex(), lexer.EOF);
-    assert.equal(lexer.yytext, "");
-    assert.equal(lexer.lex(), lexer.EOF);
-    assert.equal(lexer.yytext, "");
-};
-
 exports["test basic matchers"] = function() {
     var dict = {
         rules: [
@@ -353,6 +325,7 @@ exports["test yylloc, yyleng, and other lexer token parameters"] = function() {
     assert.equal(lexer.yytext, "x", "yytext");
     assert.equal(lexer.yyleng, 1, "yyleng");
     assert.equal(lexer.offset, 1, "offset");
+    assert.equal(lexer.match, "x", "match");
     assert.equal(lexer.matched, "x", "matched");
     assert.equal(lexer.yylloc.first_line, 1);
     assert.equal(lexer.yylloc.last_line, 1);
@@ -363,6 +336,7 @@ exports["test yylloc, yyleng, and other lexer token parameters"] = function() {
     assert.equal(lexer.yytext, "x", "yytext");
     assert.equal(lexer.yyleng, 1, "yyleng");
     assert.equal(lexer.offset, 3, "offset");
+    assert.equal(lexer.match, "x", "match");
     assert.equal(lexer.matched, "x\nx", "matched");
     assert.equal(lexer.yylloc.first_line, 2);
     assert.equal(lexer.yylloc.last_line, 2);
@@ -372,6 +346,7 @@ exports["test yylloc, yyleng, and other lexer token parameters"] = function() {
     assert.equal(lexer.yytext, "y", "yytext");
     assert.equal(lexer.yyleng, 1, "yyleng");
     assert.equal(lexer.offset, 4, "offset");
+    assert.equal(lexer.match, "y", "match");
     assert.equal(lexer.matched, "x\nxy", "matched");
     assert.equal(lexer.yylloc.first_line, 2);
     assert.equal(lexer.yylloc.last_line, 2);
@@ -381,6 +356,7 @@ exports["test yylloc, yyleng, and other lexer token parameters"] = function() {
     assert.equal(lexer.yytext, "x", "yytext");
     assert.equal(lexer.yyleng, 1, "yyleng");
     assert.equal(lexer.offset, 8, "offset");
+    assert.equal(lexer.match, "x", "match");
     assert.equal(lexer.matched, "x\nxy\n\n\nx", "matched");
     assert.equal(lexer.yylloc.first_line, 5);
     assert.equal(lexer.yylloc.last_line, 5);
@@ -390,6 +366,7 @@ exports["test yylloc, yyleng, and other lexer token parameters"] = function() {
     assert.equal(lexer.yytext, "yyyy", "yytext");
     assert.equal(lexer.yyleng, 4, "yyleng");
     assert.equal(lexer.offset, 13, "offset");
+    assert.equal(lexer.match, "yyyy", "match");
     assert.equal(lexer.matched, "x\nxy\n\n\nx\nyyyy", "matched");
     assert.equal(lexer.yylloc.first_line, 6);
     assert.equal(lexer.yylloc.last_line, 6);
@@ -417,6 +394,7 @@ exports["test yylloc with %options ranges"] = function() {
     assert.equal(lexer.yytext, "x", "yytext");
     assert.equal(lexer.yyleng, 1, "yyleng");
     assert.equal(lexer.offset, 1, "offset");
+    assert.equal(lexer.match, "x", "match");
     assert.equal(lexer.matched, "x", "matched");
     assert.equal(lexer.yylloc.first_line, 1);
     assert.equal(lexer.yylloc.last_line, 1);
@@ -429,6 +407,7 @@ exports["test yylloc with %options ranges"] = function() {
     assert.equal(lexer.yytext, "x", "yytext");
     assert.equal(lexer.yyleng, 1, "yyleng");
     assert.equal(lexer.offset, 3, "offset");
+    assert.equal(lexer.match, "x", "match");
     assert.equal(lexer.matched, "x\nx", "matched");
     assert.equal(lexer.yylloc.first_line, 2);
     assert.equal(lexer.yylloc.last_line, 2);
@@ -440,6 +419,7 @@ exports["test yylloc with %options ranges"] = function() {
     assert.equal(lexer.yytext, "y", "yytext");
     assert.equal(lexer.yyleng, 1, "yyleng");
     assert.equal(lexer.offset, 4, "offset");
+    assert.equal(lexer.match, "y", "match");
     assert.equal(lexer.matched, "x\nxy", "matched");
     assert.equal(lexer.yylloc.first_line, 2);
     assert.equal(lexer.yylloc.last_line, 2);
@@ -451,6 +431,7 @@ exports["test yylloc with %options ranges"] = function() {
     assert.equal(lexer.yytext, "x", "yytext");
     assert.equal(lexer.yyleng, 1, "yyleng");
     assert.equal(lexer.offset, 8, "offset");
+    assert.equal(lexer.match, "x", "match");
     assert.equal(lexer.matched, "x\nxy\n\n\nx", "matched");
     assert.equal(lexer.yylloc.first_line, 5);
     assert.equal(lexer.yylloc.last_line, 5);
@@ -462,6 +443,7 @@ exports["test yylloc with %options ranges"] = function() {
     assert.equal(lexer.yytext, "yyyy", "yytext");
     assert.equal(lexer.yyleng, 4, "yyleng");
     assert.equal(lexer.offset, 13, "offset");
+    assert.equal(lexer.match, "yyyy", "match");
     assert.equal(lexer.matched, "x\nxy\n\n\nx\nyyyy", "matched");
     assert.equal(lexer.yylloc.first_line, 6);
     assert.equal(lexer.yylloc.last_line, 6);
@@ -1212,4 +1194,163 @@ exports["test yytext state after unput"] = function() {
     assert.equal(lexer.yytext, "cat");
     assert.equal(lexer.lex(), "NUMBER");
     assert.equal(lexer.lex(), "EOF");
+};
+
+exports["test custom parseError handler"] = function() {
+    var dict = {
+        rules: [
+           ["x", "return 't';" ]
+       ]
+    };
+
+    var input = "xyz ?";
+
+    var counter = 0;
+
+    var lexer = new RegExpLexer(dict);
+    lexer.setInput(input, {
+      parser: {
+        parseError: function (str, hash) {
+          counter++;
+        }
+      }
+    });
+    assert.equal(lexer.lex(), "t");
+    assert.equal(lexer.yytext, "x");
+    assert.equal(lexer.lex(), lexer.ERROR);
+    assert.equal(counter, 1);
+    assert.equal(lexer.yytext, "y");
+    assert.equal(lexer.lex(), lexer.ERROR);
+    assert.equal(counter, 2);
+    assert.equal(lexer.yytext, "z");
+    assert.equal(lexer.lex(), lexer.ERROR);
+    assert.equal(counter, 3);
+    assert.equal(lexer.yytext, " ");
+    assert.equal(lexer.lex(), lexer.ERROR);
+    assert.equal(counter, 4);
+    assert.equal(lexer.yytext, "?");
+    assert.equal(lexer.lex(), lexer.EOF);
+    assert.equal(lexer.yytext, "");
+    // and then the lexer keeps on spitting out EOF tokens ad nauseam:
+    assert.equal(lexer.lex(), lexer.EOF);
+    assert.equal(lexer.yytext, "");
+    assert.equal(lexer.lex(), lexer.EOF);
+    assert.equal(lexer.yytext, "");
+};
+
+exports["test custom parseError handler which produces a replacement token"] = function() {
+    var dict = {
+        rules: [
+           ["x", "return 't';" ]
+       ]
+    };
+
+    var input = "xyz ?";
+
+    var counter = 0;
+    var c1, c2;
+
+    var lexer = new RegExpLexer(dict);
+    lexer.setInput(input, {
+      parser: {
+        parseError: function (str, hash) {
+          counter++;
+          assert.ok(hash.lexer);
+          // eat two more characters
+          c1 = hash.lexer.input();
+          c2 = hash.lexer.input();
+          return 'alt';
+        }
+      }
+    });
+    assert.equal(lexer.lex(), "t");
+    assert.equal(lexer.yytext, "x");
+    assert.equal(lexer.lex(), 'alt');
+    assert.equal(counter, 1);
+    assert.equal(c1, "y");
+    assert.equal(c2, "z");
+    assert.equal(lexer.yytext, "yz");
+    assert.equal(lexer.lex(), 'alt');
+    assert.equal(counter, 2);
+    assert.equal(c1, " ");
+    assert.equal(c2, "?");
+    assert.equal(lexer.yytext, " ?");
+    assert.equal(lexer.lex(), lexer.EOF);
+    assert.equal(lexer.yytext, "");
+    // and then the lexer keeps on spitting out EOF tokens ad nauseam:
+    assert.equal(lexer.lex(), lexer.EOF);
+    assert.equal(lexer.yytext, "");
+    assert.equal(lexer.lex(), lexer.EOF);
+    assert.equal(lexer.yytext, "");
+};
+
+exports["test custom pre and post handlers"] = function() {
+    var dict = {
+        options: {
+          pre_lex: function () {
+            counter += 1;
+            if (counter % 2 === 1) {
+              return 'PRE';
+            } 
+          },
+          post_lex: function (tok) {
+            counter += 2;
+            if (counter % 6 === 2) {
+              return 'POST:' + tok;
+            } 
+            return 'a:' + tok;
+          }
+        },
+        rules: [
+           ["[a-z]", "return 't';" ]
+       ]
+    };
+
+    var input = "xyz";
+
+    var counter = 0;
+
+    var lexer = new RegExpLexer(dict);
+    lexer.setInput(input);
+    assert.equal(lexer.lex(), "a:PRE");
+    assert.equal(lexer.yytext, "");
+    assert.equal(counter, 3);
+    assert.equal(lexer.lex(), "a:t");
+    assert.equal(lexer.yytext, "x");
+    assert.equal(counter, 6);
+    assert.equal(lexer.lex(), "a:PRE");
+    // as our PRE handler causes the lexer to produce another token immediately
+    // without entering the lexer proper, `yytext` et al are NOT RESET:
+    assert.equal(lexer.yytext, "x");    
+    assert.equal(counter, 9);
+    assert.equal(lexer.lex(), "a:t");
+    assert.equal(lexer.yytext, "y");
+    assert.equal(counter, 12);
+    assert.equal(lexer.lex(), "a:PRE");
+    assert.equal(lexer.yytext, "y");
+    assert.equal(counter, 15);
+    assert.equal(lexer.lex(), "a:t");
+    assert.equal(lexer.yytext, "z");
+    assert.equal(counter, 18);
+    assert.equal(lexer.lex(), "a:PRE");
+    assert.equal(lexer.yytext, "z");
+    assert.equal(counter, 21);
+    assert.equal(lexer.EOF, 1);
+    assert.equal(lexer.lex(), "a:1");
+    assert.equal(lexer.yytext, "");
+    assert.equal(counter, 24);
+    // and then the lexer keeps on spitting out post-processed EOF tokens ad nauseam
+    // interleaved with PRE tokens produced by the PRE handler:
+    assert.equal(lexer.lex(), "a:PRE");
+    assert.equal(lexer.yytext, "");
+    assert.equal(counter, 27);
+    assert.equal(lexer.lex(), "a:1"); // EOF
+    assert.equal(lexer.yytext, "");
+    assert.equal(counter, 30);
+    assert.equal(lexer.lex(), "a:PRE");
+    assert.equal(lexer.yytext, "");
+    assert.equal(counter, 33);
+    assert.equal(lexer.lex(), "a:1");
+    assert.equal(lexer.yytext, "");
+    assert.equal(counter, 36);
 };
