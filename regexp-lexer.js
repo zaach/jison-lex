@@ -82,14 +82,25 @@ function prepareRules(rules, macros, actions, tokens, startConditions, caseless,
         code = code.concat('*/', '\n');
 
         // When the action is *only* a simple `return TOKEN` statement, then add it to the caseHelpers;
-        // otherwise when it *ends* with a not-commented-out `return TOKEN` statement, we merely don't
-        // add the additional `break;` at the end as that would be 'unreachable code'.        
+        // otherwise add the additional `break;` at the end.
+        // 
+        // Note: we do NOT analyze the action block any more to see if the *last* line is a simple
+        // `return NNN;` statement as there are too many shoddy idioms, e.g.
+        // 
+        // ```
+        // %{ if (cond)
+        //      return TOKEN;
+        // %}
+        // ```
+        // 
+        // which would then cause havoc when our action code analysis (using regexes or otherwise) was 'too simple'
+        // to catch these culprits; hence we resort and stick with the most fundamental approach here: 
+        // always append `break;` even when it would be obvious to a human that such would be 'unreachable code'.        
         var match_nr = /^return[\s\r\n]+((?:'(?:\\'|[^']+)+')|(?:"(?:\\"|[^"]+)+")|\d+)[\s\r\n]*;?$/.exec(action.trim());
         if (match_nr) {
             caseHelper.push([].concat(code, i, ':', match_nr[1]).join(' ').replace(/[\n]/g, '\n  '));
         } else {
-            var match_return_at_end = /\n[\s\r\n]*return[\s\r\n]+((?:'(?:\\'|[^']+)+')|(?:"(?:\\"|[^"]+)+")|\d+)[\s\r\n]*;?$/.exec(action.trim());
-            actions.push([].concat('case', i, ':', code, action, (!match_return_at_end ? '\nbreak;' : '')).join(' '));
+            actions.push([].concat('case', i, ':', code, action, '\nbreak;').join(' '));
         }
     }
     actions.push('default:');
