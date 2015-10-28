@@ -1291,7 +1291,7 @@ exports["test custom pre and post handlers"] = function() {
             counter += 1;
             if (counter % 2 === 1) {
               return 'PRE';
-            } 
+            }
           },
           post_lex: function (tok) {
             counter += 2;
@@ -1318,7 +1318,7 @@ exports["test custom pre and post handlers"] = function() {
     assert.equal(lexer.lex(), "a:PRE");
     // as our PRE handler causes the lexer to produce another token immediately
     // without entering the lexer proper, `yytext` et al are NOT RESET:
-    assert.equal(lexer.yytext, "x");    
+    assert.equal(lexer.yytext, "x");
     assert.equal(counter, 9);
     assert.equal(lexer.lex(), "a:t");
     assert.equal(lexer.yytext, "y");
@@ -1359,7 +1359,7 @@ exports["test live replacement of custom pre and post handlers"] = function() {
             counter += 1;
             if (counter % 2 === 1) {
               return 'PRE';
-            } 
+            }
           },
           post_lex: function (tok) {
             counter += 2;
@@ -1386,7 +1386,7 @@ exports["test live replacement of custom pre and post handlers"] = function() {
     assert.equal(lexer.lex(), "a:PRE");
     // as our PRE handler causes the lexer to produce another token immediately
     // without entering the lexer proper, `yytext` et al are NOT RESET:
-    assert.equal(lexer.yytext, "x");    
+    assert.equal(lexer.yytext, "x");
     assert.equal(counter, 9);
 
     lexer.options.pre_lex = null;
@@ -1436,4 +1436,171 @@ exports["test edge case which could break documentation comments in the generate
     assert.equal(lexer.lex(), "X");
     assert.equal(lexer.lex(), lexer.EOF);
 };
+
+exports["test yylloc info object must be unique for each token"] = function() {
+    var dict = {
+        rules: [
+            ["[a-z]", "return 'X';" ]
+        ],
+        options: {ranges: true}
+    };
+
+    var input = "xyz";
+    var prevloc = null;
+
+    var lexer = new RegExpLexer(dict, input);
+    assert.equal(lexer.lex(), "X");
+    assert.deepEqual(lexer.yylloc, {first_line: 1,
+                                    first_column: 0,
+                                    last_line: 1,
+                                    last_column: 1,
+                                    range: [0, 1]});
+    prevloc = lexer.yylloc;
+    assert.equal(lexer.lex(), "X");
+    assert.notStrictEqual(prevloc, lexer.yylloc);
+    assert.deepEqual(lexer.yylloc, {first_line: 1,
+                                    first_column: 1,
+                                    last_line: 1,
+                                    last_column: 2,
+                                    range: [1, 2]});
+    prevloc = lexer.yylloc;
+    assert.equal(lexer.lex(), "X");
+    assert.notStrictEqual(prevloc, lexer.yylloc);
+    assert.deepEqual(lexer.yylloc, {first_line: 1,
+                                    first_column: 2,
+                                    last_line: 1,
+                                    last_column: 3,
+                                    range: [2, 3]});
+    prevloc = lexer.yylloc;
+    assert.equal(lexer.lex(), lexer.EOF);
+    // not so for EOF:
+    if (0) {
+      assert.notStrictEqual(prevloc, lexer.yylloc);
+      assert.deepEqual(lexer.yylloc, {first_line: 1,
+                                      first_column: 3,
+                                      last_line: 1,
+                                      last_column: 3,
+                                      range: [3, 3]});
+    }
+};
+
+exports["test yylloc info object is not modified by subsequent lex() activity"] = function() {
+    var dict = {
+        rules: [
+            ["[a-z]", "return 'X';" ]
+        ],
+        options: {ranges: true}
+    };
+
+    var input = "xyz";
+    var prevloc = null;
+
+    var lexer = new RegExpLexer(dict, input);
+    assert.equal(lexer.lex(), "X");
+    assert.deepEqual(lexer.yylloc, {first_line: 1,
+                                    first_column: 0,
+                                    last_line: 1,
+                                    last_column: 1,
+                                    range: [0, 1]});
+    prevloc = lexer.yylloc;
+    assert.equal(lexer.lex(), "X");
+    assert.notStrictEqual(prevloc, lexer.yylloc);
+    assert.deepEqual(prevloc, {first_line: 1,
+                                    first_column: 0,
+                                    last_line: 1,
+                                    last_column: 1,
+                                    range: [0, 1]});
+    assert.deepEqual(lexer.yylloc, {first_line: 1,
+                                    first_column: 1,
+                                    last_line: 1,
+                                    last_column: 2,
+                                    range: [1, 2]});
+    prevloc = lexer.yylloc;
+    assert.equal(lexer.lex(), "X");
+    assert.notStrictEqual(prevloc, lexer.yylloc);
+    assert.deepEqual(prevloc, {first_line: 1,
+                                    first_column: 1,
+                                    last_line: 1,
+                                    last_column: 2,
+                                    range: [1, 2]});
+    assert.deepEqual(lexer.yylloc, {first_line: 1,
+                                    first_column: 2,
+                                    last_line: 1,
+                                    last_column: 3,
+                                    range: [2, 3]});
+    prevloc = lexer.yylloc;
+    assert.equal(lexer.lex(), lexer.EOF);
+    // not so for EOF:
+    if (0) {
+      assert.notStrictEqual(prevloc, lexer.yylloc);
+      assert.deepEqual(prevloc, {first_line: 1,
+                                      first_column: 2,
+                                      last_line: 1,
+                                      last_column: 3,
+                                      range: [2, 3]});
+      assert.deepEqual(lexer.yylloc, {first_line: 1,
+                                      first_column: 3,
+                                      last_line: 1,
+                                      last_column: 3,
+                                      range: [3, 3]});
+    }
+};
+
+exports["test yylloc info object CAN be modified by subsequent input() activity"] = function() {
+    var dict = {
+        rules: [
+            ["[a-z]", "return 'X';" ]
+        ],
+        options: {ranges: true}
+    };
+
+    var input = "xyz";
+    var prevloc = null;
+
+    var lexer = new RegExpLexer(dict, input);
+    assert.equal(lexer.lex(), "X");
+    assert.deepEqual(lexer.yylloc, {first_line: 1,
+                                    first_column: 0,
+                                    last_line: 1,
+                                    last_column: 1,
+                                    range: [0, 1]});
+    prevloc = lexer.yylloc;
+    assert.equal(lexer.lex(), "X");
+    assert.notStrictEqual(prevloc, lexer.yylloc);
+    assert.deepEqual(prevloc, {first_line: 1,
+                                    first_column: 0,
+                                    last_line: 1,
+                                    last_column: 1,
+                                    range: [0, 1]});
+    assert.deepEqual(lexer.yylloc, {first_line: 1,
+                                    first_column: 1,
+                                    last_line: 1,
+                                    last_column: 2,
+                                    range: [1, 2]});
+    prevloc = lexer.yylloc;
+    assert.equal(lexer.input(), "z");
+    // this will modify the existing yylloc:
+    assert.strictEqual(prevloc, lexer.yylloc);
+    assert.deepEqual(prevloc, {first_line: 1,
+                                    first_column: 1,
+                                    last_line: 1,
+                                    last_column: 3,
+                                    range: [1, 3]});
+    assert.deepEqual(lexer.yylloc, {first_line: 1,
+                                    first_column: 1,
+                                    last_line: 1,
+                                    last_column: 3,
+                                    range: [1, 3]});
+    prevloc = lexer.yylloc;
+    assert.equal(lexer.lex(), lexer.EOF);
+    // forget about yylloc on EOF: its the same object as before...
+    assert.strictEqual(prevloc, lexer.yylloc);
+    // and this yylloc value set is counter-intuitive because EOF doesn't update yylloc at all:
+    assert.deepEqual(lexer.yylloc, {first_line: 1,
+                                    first_column: 1,
+                                    last_line: 1,
+                                    last_column: 3,
+                                    range: [1, 3]});
+};
+
 
