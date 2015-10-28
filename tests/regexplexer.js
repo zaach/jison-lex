@@ -1,6 +1,34 @@
 var RegExpLexer = require("../regexp-lexer"),
     assert = require("assert");
 
+exports["test predefined constants"] = function() {
+    var dict = {
+        rules: [
+           ["x", "return 't';" ]
+       ]
+    };
+
+    var input = "xxx";
+
+    var lexer = new RegExpLexer(dict);
+    assert.equal(lexer.EOF, 1, "EOF");
+    assert.equal(lexer.ERROR, 2, "ERROR");
+    lexer.setInput(input);
+    assert.equal(lexer.lex(), "t");
+    assert.equal(lexer.yytext, "x");
+    assert.equal(lexer.lex(), "t");
+    assert.equal(lexer.yytext, "x");
+    assert.equal(lexer.lex(), "t");
+    assert.equal(lexer.yytext, "x");
+    assert.equal(lexer.lex(), lexer.EOF);
+    assert.equal(lexer.yytext, "");
+    // and then the lexer keeps on spitting out EOF tokens ad nauseam:
+    assert.equal(lexer.lex(), lexer.EOF);
+    assert.equal(lexer.yytext, "");
+    assert.equal(lexer.lex(), lexer.EOF);
+    assert.equal(lexer.yytext, "");
+};
+
 exports["test basic matchers"] = function() {
     var dict = {
         rules: [
@@ -309,36 +337,138 @@ exports["test yylineno with input"] = function() {
 };
 
 
-exports["test yylloc"] = function() {
+exports["test yylloc, yyleng, and other lexer token parameters"] = function() {
     var dict = {
         rules: [
            ["\\s+", "/* skip whitespace */" ],
-           ["x", "return 'x';" ],
-           ["y", "return 'y';" ]
+           ["x+", "return 'x';" ],
+           ["y+", "return 'y';" ]
        ]
     };
 
-    var input = "x\nxy\n\n\nx";
+    var input = "x\nxy\n\n\nx\nyyyy";
 
     var lexer = new RegExpLexer(dict, input);
     assert.equal(lexer.lex(), "x");
+    assert.equal(lexer.yytext, "x", "yytext");
+    assert.equal(lexer.yyleng, 1, "yyleng");
+    assert.equal(lexer.offset, 1, "offset");
+    assert.equal(lexer.matched, "x", "matched");
+    assert.equal(lexer.yylloc.first_line, 1);
+    assert.equal(lexer.yylloc.last_line, 1);
     assert.equal(lexer.yylloc.first_column, 0);
     assert.equal(lexer.yylloc.last_column, 1);
+    assert.ok(lexer.yylloc.range === undefined);
     assert.equal(lexer.lex(), "x");
+    assert.equal(lexer.yytext, "x", "yytext");
+    assert.equal(lexer.yyleng, 1, "yyleng");
+    assert.equal(lexer.offset, 3, "offset");
+    assert.equal(lexer.matched, "x\nx", "matched");
     assert.equal(lexer.yylloc.first_line, 2);
     assert.equal(lexer.yylloc.last_line, 2);
     assert.equal(lexer.yylloc.first_column, 0);
     assert.equal(lexer.yylloc.last_column, 1);
     assert.equal(lexer.lex(), "y");
+    assert.equal(lexer.yytext, "y", "yytext");
+    assert.equal(lexer.yyleng, 1, "yyleng");
+    assert.equal(lexer.offset, 4, "offset");
+    assert.equal(lexer.matched, "x\nxy", "matched");
     assert.equal(lexer.yylloc.first_line, 2);
     assert.equal(lexer.yylloc.last_line, 2);
     assert.equal(lexer.yylloc.first_column, 1);
     assert.equal(lexer.yylloc.last_column, 2);
     assert.equal(lexer.lex(), "x");
+    assert.equal(lexer.yytext, "x", "yytext");
+    assert.equal(lexer.yyleng, 1, "yyleng");
+    assert.equal(lexer.offset, 8, "offset");
+    assert.equal(lexer.matched, "x\nxy\n\n\nx", "matched");
     assert.equal(lexer.yylloc.first_line, 5);
     assert.equal(lexer.yylloc.last_line, 5);
     assert.equal(lexer.yylloc.first_column, 0);
     assert.equal(lexer.yylloc.last_column, 1);
+    assert.equal(lexer.lex(), "y");
+    assert.equal(lexer.yytext, "yyyy", "yytext");
+    assert.equal(lexer.yyleng, 4, "yyleng");
+    assert.equal(lexer.offset, 13, "offset");
+    assert.equal(lexer.matched, "x\nxy\n\n\nx\nyyyy", "matched");
+    assert.equal(lexer.yylloc.first_line, 6);
+    assert.equal(lexer.yylloc.last_line, 6);
+    assert.equal(lexer.yylloc.first_column, 0);
+    assert.equal(lexer.yylloc.last_column, 4);
+};
+
+
+exports["test yylloc with %options ranges"] = function() {
+    var dict = {
+        options: {
+          ranges: true
+        },
+        rules: [
+           ["\\s+", "/* skip whitespace */" ],
+           ["x+", "return 'x';" ],
+           ["y+", "return 'y';" ]
+       ]
+    };
+
+    var input = "x\nxy\n\n\nx\nyyyy";
+
+    var lexer = new RegExpLexer(dict, input);
+    assert.equal(lexer.lex(), "x");
+    assert.equal(lexer.yytext, "x", "yytext");
+    assert.equal(lexer.yyleng, 1, "yyleng");
+    assert.equal(lexer.offset, 1, "offset");
+    assert.equal(lexer.matched, "x", "matched");
+    assert.equal(lexer.yylloc.first_line, 1);
+    assert.equal(lexer.yylloc.last_line, 1);
+    assert.equal(lexer.yylloc.first_column, 0);
+    assert.equal(lexer.yylloc.last_column, 1);
+    assert.ok(lexer.yylloc.range != null);
+    assert.equal(lexer.yylloc.range[0], 0);
+    assert.equal(lexer.yylloc.range[1], 1);
+    assert.equal(lexer.lex(), "x");
+    assert.equal(lexer.yytext, "x", "yytext");
+    assert.equal(lexer.yyleng, 1, "yyleng");
+    assert.equal(lexer.offset, 3, "offset");
+    assert.equal(lexer.matched, "x\nx", "matched");
+    assert.equal(lexer.yylloc.first_line, 2);
+    assert.equal(lexer.yylloc.last_line, 2);
+    assert.equal(lexer.yylloc.first_column, 0);
+    assert.equal(lexer.yylloc.last_column, 1);
+    assert.equal(lexer.yylloc.range[0], 2);
+    assert.equal(lexer.yylloc.range[1], 3);
+    assert.equal(lexer.lex(), "y");
+    assert.equal(lexer.yytext, "y", "yytext");
+    assert.equal(lexer.yyleng, 1, "yyleng");
+    assert.equal(lexer.offset, 4, "offset");
+    assert.equal(lexer.matched, "x\nxy", "matched");
+    assert.equal(lexer.yylloc.first_line, 2);
+    assert.equal(lexer.yylloc.last_line, 2);
+    assert.equal(lexer.yylloc.first_column, 1);
+    assert.equal(lexer.yylloc.last_column, 2);
+    assert.equal(lexer.yylloc.range[0], 3);
+    assert.equal(lexer.yylloc.range[1], 4);
+    assert.equal(lexer.lex(), "x");
+    assert.equal(lexer.yytext, "x", "yytext");
+    assert.equal(lexer.yyleng, 1, "yyleng");
+    assert.equal(lexer.offset, 8, "offset");
+    assert.equal(lexer.matched, "x\nxy\n\n\nx", "matched");
+    assert.equal(lexer.yylloc.first_line, 5);
+    assert.equal(lexer.yylloc.last_line, 5);
+    assert.equal(lexer.yylloc.first_column, 0);
+    assert.equal(lexer.yylloc.last_column, 1);
+    assert.equal(lexer.yylloc.range[0], 7);
+    assert.equal(lexer.yylloc.range[1], 8);
+    assert.equal(lexer.lex(), "y");
+    assert.equal(lexer.yytext, "yyyy", "yytext");
+    assert.equal(lexer.yyleng, 4, "yyleng");
+    assert.equal(lexer.offset, 13, "offset");
+    assert.equal(lexer.matched, "x\nxy\n\n\nx\nyyyy", "matched");
+    assert.equal(lexer.yylloc.first_line, 6);
+    assert.equal(lexer.yylloc.last_line, 6);
+    assert.equal(lexer.yylloc.first_column, 0);
+    assert.equal(lexer.yylloc.last_column, 4);
+    assert.equal(lexer.yylloc.range[0], 9);
+    assert.equal(lexer.yylloc.range[1], 13);
 };
 
 exports["test more()"] = function() {
@@ -617,7 +747,7 @@ exports["test DJ lexer"] = function() {
     var lexer = new RegExpLexer(dict.lex);
     lexer.setInput(input);
     var tok;
-    while (tok = lexer.lex(), tok!==1) {
+    while (tok = lexer.lex(), tok !== 1) {
         assert.equal(typeof tok, "string");
     }
 };
