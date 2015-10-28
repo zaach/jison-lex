@@ -1295,9 +1295,6 @@ exports["test custom pre and post handlers"] = function() {
           },
           post_lex: function (tok) {
             counter += 2;
-            if (counter % 6 === 2) {
-              return 'POST:' + tok;
-            } 
             return 'a:' + tok;
           }
         },
@@ -1353,4 +1350,73 @@ exports["test custom pre and post handlers"] = function() {
     assert.equal(lexer.lex(), "a:1");
     assert.equal(lexer.yytext, "");
     assert.equal(counter, 36);
+};
+
+exports["test live replacement of custom pre and post handlers"] = function() {
+    var dict = {
+        options: {
+          pre_lex: function () {
+            counter += 1;
+            if (counter % 2 === 1) {
+              return 'PRE';
+            } 
+          },
+          post_lex: function (tok) {
+            counter += 2;
+            return 'a:' + tok;
+          }
+        },
+        rules: [
+           ["[a-z]", "return 't';" ]
+       ]
+    };
+
+    var input = "xyz";
+
+    var counter = 0;
+
+    var lexer = new RegExpLexer(dict);
+    lexer.setInput(input);
+    assert.equal(lexer.lex(), "a:PRE");
+    assert.equal(lexer.yytext, "");
+    assert.equal(counter, 3);
+    assert.equal(lexer.lex(), "a:t");
+    assert.equal(lexer.yytext, "x");
+    assert.equal(counter, 6);
+    assert.equal(lexer.lex(), "a:PRE");
+    // as our PRE handler causes the lexer to produce another token immediately
+    // without entering the lexer proper, `yytext` et al are NOT RESET:
+    assert.equal(lexer.yytext, "x");    
+    assert.equal(counter, 9);
+
+    lexer.options.pre_lex = null;
+    lexer.options.post_lex = function (tok) {
+      counter--;
+      if (tok !== lexer.EOF) {
+        return 'V2:' + tok;
+      }
+      // default return of undefined/false/0 will have the lexer produce the raw token
+    };
+
+    assert.equal(lexer.lex(), "V2:t");
+    assert.equal(lexer.yytext, "y");
+    assert.equal(counter, 8);
+    assert.equal(lexer.lex(), "V2:t");
+    assert.equal(lexer.yytext, "z");
+    assert.equal(counter, 7);
+    assert.equal(lexer.EOF, 1);
+    assert.equal(lexer.lex(), lexer.EOF);
+    assert.equal(lexer.yytext, "");
+    assert.equal(counter, 6);
+    // and then the lexer keeps on spitting out post-processed EOF tokens ad nauseam
+    // interleaved with PRE tokens produced by the PRE handler:
+    assert.equal(lexer.lex(), lexer.EOF);
+    assert.equal(lexer.yytext, "");
+    assert.equal(counter, 5);
+    assert.equal(lexer.lex(), lexer.EOF);
+    assert.equal(lexer.yytext, "");
+    assert.equal(counter, 4);
+    assert.equal(lexer.lex(), lexer.EOF);
+    assert.equal(lexer.yytext, "");
+    assert.equal(counter, 3);
 };
