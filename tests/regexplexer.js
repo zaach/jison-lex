@@ -1420,3 +1420,19 @@ exports["test live replacement of custom pre and post handlers"] = function() {
     assert.equal(lexer.yytext, "");
     assert.equal(counter, 3);
 };
+
+exports["test edge case which could break documentation comments in the generated lexer"] = function() {
+    var dict = {
+        rules: [
+           ["\\*\\/", "return 'X';" ],
+           ["\"*/\"", "return 'Y';" ]
+       ]
+    };
+
+    var input = "*/";
+
+    var lexer = new RegExpLexer(dict, input);
+    assert.equal(lexer.lex(), "X");
+    assert.equal(lexer.lex(), lexer.EOF);
+};
+

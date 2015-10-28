@@ -24,6 +24,16 @@ function prepareRules(rules, macros, actions, tokens, startConditions, caseless,
         return 'return ' + (tokens[token] || '\'' + token.replace(/'/g, '\\\'') + '\'');
     }
 
+    // make sure a comment does not contain any embedded '*/' end-of-comment marker 
+    // as that would break the generated code 
+    function postprocessComment(str) {
+        if (Array.isArray(str)) {
+            str = str.join(' ');
+        }
+        str = str.replace(/\*\//g, "*\\/");         // destroy any inner `*/` comment terminator sequence.
+        return str;
+    }
+
     actions.push('switch($avoiding_name_collisions) {');
 
     for (i = 0; i < rules.length; i++) {
@@ -76,10 +86,10 @@ function prepareRules(rules, macros, actions, tokens, startConditions, caseless,
         }
         
         var code = ['\n/*! Conditions::'];
-        code = code.concat(active_conditions);
-        code = code.concat('*/', '\n/*! Rule::      ');
-        code = code.concat(rules[i][0]);
-        code = code.concat('*/', '\n');
+        code.push(postprocessComment(active_conditions));
+        code.push('*/', '\n/*! Rule::      ');
+        code.push(postprocessComment(rules[i][0]));
+        code.push('*/', '\n');
 
         // When the action is *only* a simple `return TOKEN` statement, then add it to the caseHelpers;
         // otherwise add the additional `break;` at the end.
