@@ -206,7 +206,7 @@ function prepareStartConditions (conditions) {
         hash = {};
     for (sc in conditions) {
         if (conditions.hasOwnProperty(sc)) {
-            hash[sc] = {rules:[], inclusive: !!!conditions[sc]};
+            hash[sc] = {rules:[], inclusive: !conditions[sc]};
         }
     }
     return hash;
@@ -287,7 +287,7 @@ function RegExpLexer (dict, input, tokens) {
             if (ex_callback) {
                 ex_callback(ex);
             } else if (dump) {
-                console.log("source code:\n", source);
+                console.log('source code:\n', source);
             }
             return false;
         }
@@ -818,6 +818,14 @@ function generateModuleBody(opt) {
         pushState: 'alias for begin(condition)',
         stateStackSize: 'return the number of states currently on the stack'
     };
+
+    // make the JSON output look more like JavaScript:
+    function cleanupJSON(str) {
+        str = str.replace(/  "rules": \[/g, '  rules: [');
+        str = str.replace(/  "inclusive": /g, '  inclusive: ');
+        return str;
+    }
+
     var out = '({\n';
     var p = [];
     var descr;
@@ -841,7 +849,7 @@ function generateModuleBody(opt) {
     out += ',\nperformAction: ' + String(opt.performAction);
     out += ',\nsimpleCaseActionClusters: ' + String(opt.caseHelperInclude);
     out += ',\nrules: [\n' + opt.rules.join(',\n') + '\n]';
-    out += ',\nconditions: ' + JSON.stringify(opt.conditions, null, 2);
+    out += ',\nconditions: ' + cleanupJSON(JSON.stringify(opt.conditions, null, 2));
     out += '\n})';
 
     return out;
