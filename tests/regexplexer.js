@@ -1425,7 +1425,8 @@ exports["test edge case which could break documentation comments in the generate
     var dict = {
         rules: [
            ["\\*\\/", "return 'X';" ],
-           ["\"*/\"", "return 'Y';" ]
+           ["\"*/\"", "return 'Y';" ],
+           ["'*/'", "return 'Z';" ]
        ]
     };
 
