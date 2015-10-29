@@ -182,7 +182,7 @@ function prepareMacros(dict_macros, opts) {
             // one thing is apparently *not* caught by the RegExp compile action above: `[a[b]c]`
             // so we check for lingering UNESCAPED brackets in here as those cannot be:
             if (/[^\\][\[\]]/.exec(s)) {
-                throw "unescaped brackets in set data";
+                throw 'unescaped brackets in set data';
             }
         } catch (ex) {
             // make sure we produce a set range expression which will fail badly when it is used
