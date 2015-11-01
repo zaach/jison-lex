@@ -1603,4 +1603,30 @@ exports["test yylloc info object CAN be modified by subsequent input() activity"
                                     range: [1, 3]});
 };
 
+exports["test empty rule set with custom lexer"] = function() {
+    var src = null;
+
+    var dict = {
+        rules: [],
+        actionInclude: 'var input = ""; var input_offset = 0; var lexer = { EOF: 1, ERROR: 2, options: {}, lex: function () { if (input.length > input_offset) { return "a" + input[input_offset++]; } else { return this.EOF; } }, setInput: function(inp) { input = inp; input_offset = 0; } };',
+        moduleInclude: 'console.log("moduleInclude");',
+        options: {
+          foo: 'bar',
+          showSource: function (lexer, source, opts) {
+            src = source;
+          }
+        }
+    };
+
+    var input = "xxyx";
+
+    var lexer = new RegExpLexer(dict, input);
+    assert.equal(lexer.lex(), "ax");
+    assert.equal(lexer.lex(), "ax");
+    assert.equal(lexer.lex(), "ay");
+    assert.equal(lexer.lex(), "ax");
+    assert.equal(lexer.lex(), lexer.EOF);
+};
+
+
 
