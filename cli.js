@@ -40,15 +40,15 @@ exports.main = function (opts) {
         var raw = fs.readFileSync(path.normalize(opts.file), 'utf8'),
             name = path.basename((opts.outfile||opts.file)).replace(/\..*$/g,'');
 
-        fs.writeFileSync(opts.outfile||(name + '.js'), processGrammar(raw, name));
+        fs.writeFileSync(opts.outfile||(name + '.js'), processGrammar(raw, name, opts));
     } else {
         readin(function (raw) {
-            console.log(processGrammar(raw));
+            console.log(processGrammar(raw, null, opts));
         });
     }
 };
 
-function processGrammar (file, name) {
+function processGrammar (file, name, opts) {
     var grammar;
     try {
         grammar = lexParser.parse(file);
