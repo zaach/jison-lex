@@ -960,6 +960,23 @@ exports["test case insensitivity"] = function() {
     assert.equal(lexer.lex(), "CAT");
 };
 
+exports["test camelCased json options"] = function() {
+    var dict = {
+        rules: [
+            ["cat", "return 'CAT';" ]
+        ],
+        options: {
+          caseInsensitive: true
+        }
+    };
+    var input = "Cat";
+
+    var lexer = new RegExpLexer(dict);
+    lexer.setInput(input);
+
+    assert.equal(lexer.lex(), "CAT");
+};
+
 exports["test less"] = function() {
     var dict = {
         rules: [
