@@ -48,7 +48,7 @@ exports.main = function (opts) {
     }
 };
 
-function processGrammar (file, name) {
+function processGrammar(file, name) {
     var grammar;
     try {
         grammar = lexParser.parse(file);
@@ -61,9 +61,14 @@ function processGrammar (file, name) {
     }
 
     var settings = grammar.options || {};
-    if (!settings.moduleType) settings.moduleType = opts['module-type'];
-    if (!settings.moduleName && name) settings.moduleName = name.replace(/-\w/g, function (match){ return match.charAt(1).toUpperCase(); });
-
+    if (!settings.moduleType) {
+        settings.moduleType = (opts['module-type'] || opts.moduleType);
+    }
+    if (!settings.moduleName && name) {
+        settings.moduleName = name.replace(/-\w/g, function (match) { 
+            return match.charAt(1).toUpperCase(); 
+        });
+    }
     grammar.options = settings;
 
     return RegExpLexer.generate(grammar);
