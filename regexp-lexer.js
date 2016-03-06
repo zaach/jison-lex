@@ -1048,11 +1048,12 @@ function generateFromOpts(opt) {
 
 function generateRegexesInitTableCode(opt) {
     var a = opt.rules;
+    var print_xregexp = opt.options && opt.options.xregexp;
     a = a.map(function generateXRegExpInitCode(re) {
         if (re instanceof XRegExp) {
             // When we don't need the special XRegExp sauce at run-time, we do with the original
             // JavaScript RegExp instance a.k.a. 'native regex':
-            if (re.xregexp.isNative) {
+            if (re.xregexp.isNative || !print_xregexp) {
                 return re;
             }
             // And make sure to escape the regex to make it suitable for placement inside a *string*
