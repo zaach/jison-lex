@@ -405,12 +405,11 @@ RegExpLexer.prototype = {
 
     // return next match that has a token
     lex: function lex () {
-        var r = this.next();
-        if (r) {
-            return r;
-        } else {
-            return this.lex();
-        }
+        var r;
+        do {
+			r = this.next();
+        } while (!r);
+      	return r;
     },
 
     // activates a new lexer condition state (pushes the new lexer condition state onto the condition stack)
