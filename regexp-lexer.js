@@ -407,7 +407,7 @@ RegExpLexer.prototype = {
     lex: function lex () {
         var r;
         do {
-			r = this.next();
+	    r = this.next();
         } while (!r);
       	return r;
     },
