@@ -1623,9 +1623,31 @@ exports["test yylloc info object CAN be modified by subsequent input() activity"
 exports["test empty rule set with custom lexer"] = function() {
     var src = null;
 
+    // Wrap the custom lexer code in a function so we can String()-dump it:
+    function customLexerCode() {
+        var input = ""; 
+        var input_offset = 0; 
+        var lexer = { 
+            EOF: 1, 
+            ERROR: 2, 
+            options: {}, 
+            lex: function () { 
+                if (input.length > input_offset) { 
+                    return "a" + input[input_offset++]; 
+                } else { 
+                    return this.EOF; 
+                } 
+            }, 
+            setInput: function (inp) { 
+                input = inp; 
+                input_offset = 0; 
+            } 
+        };
+    }
+
     var dict = {
         rules: [],
-        actionInclude: 'var input = ""; var input_offset = 0; var lexer = { EOF: 1, ERROR: 2, options: {}, lex: function () { if (input.length > input_offset) { return "a" + input[input_offset++]; } else { return this.EOF; } }, setInput: function(inp) { input = inp; input_offset = 0; } };',
+        actionInclude: String(customLexerCode).replace(/function [^\{]+\{/, '').replace(/\}$/, ''),
         moduleInclude: 'console.log("moduleInclude");',
         options: {
           foo: 'bar',
