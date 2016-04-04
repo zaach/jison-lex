@@ -457,8 +457,8 @@ exports["test more()"] = function() {
     var dict = {
         rules: [
            ["x", "return 'X';" ],
-           ['"[^"]*', function(){
-               if(yytext.charAt(yyleng-1) == '\\') {
+           ['"[^"]*', function () {
+               if (yytext.charAt(yyleng - 1) === '\\') {
                    this.more();
                } else {
                    yytext += this.input(); // swallow end quote
@@ -548,8 +548,8 @@ exports["test generator with more complex lexer"] = function() {
     var dict = {
         rules: [
            ["x", "return 'X';" ],
-           ['"[^"]*', function(){
-               if(yytext.charAt(yyleng-1) == '\\') {
+           ['"[^"]*', function () {
+               if (yytext.charAt(yyleng - 1) === '\\') {
                    this.more();
                } else {
                    yytext += this.input(); // swallow end quote
@@ -833,7 +833,7 @@ exports["test star start condition"] = function() {
             [["EAT"], ".", "" ],
             ["x", "return 'X';" ],
             ["y", "return 'Y';" ],
-            [["*"],"$", "return 'EOF';" ]
+            [["*"], "$", "return 'EOF';" ]
         ]
     };
     var input = "xy//yxteadh//stey";
@@ -853,10 +853,10 @@ exports["test start condition constants"] = function() {
         },
         rules: [
             ["\\/\\/", "this.begin('EAT');" ],
-            [["EAT"], ".", "if (YYSTATE==='EAT') return 'E';" ],
-            ["x", "if (YY_START==='INITIAL') return 'X';" ],
+            [["EAT"], ".", "if (YYSTATE === 'EAT') return 'E';" ],
+            ["x", "if (YY_START === 'INITIAL') return 'X';" ],
             ["y", "return 'Y';" ],
-            [["*"],"$", "return 'EOF';" ]
+            [["*"], "$", "return 'EOF';" ]
         ]
     };
     var input = "xy//y";
@@ -877,10 +877,10 @@ exports["test start condition & warning"] = function() {
         },
         rules: [
             ["\\/\\/", "this.begin('EAT');" ],
-            [["EAT"], ".", "if (YYSTATE==='EAT') return 'E';" ],
-            ["x", "if (YY_START==='INITIAL') return 'X';" ],
+            [["EAT"], ".", "if (YYSTATE === 'EAT') return 'E';" ],
+            ["x", "if (YY_START === 'INITIAL') return 'X';" ],
             ["y", "return 'Y';" ],
-            [["*"],"$", "return 'EOF';" ]
+            [["*"], "$", "return 'EOF';" ]
         ]
     };
     var input = "xy//y";
@@ -1000,8 +1000,8 @@ exports["test EOF unput"] = function() {
         },
         rules: [
             ["U", "this.begin('UN');return 'U';" ],
-            [["UN"],"$", "this.unput('X')" ],
-            [["UN"],"X", "this.popState();return 'X';" ],
+            [["UN"], "$", "this.unput('X')" ],
+            [["UN"], "X", "this.popState();return 'X';" ],
             ["$", "return 'EOF'" ]
         ]
     };
