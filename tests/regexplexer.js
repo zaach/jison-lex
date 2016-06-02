@@ -1782,7 +1782,7 @@ exports["test support for unicode macro expansion via internal xregexp"] = funct
 
     var lexer = new RegExpLexer(dict);
     //console.log(lexer);
-    console.log("RULES:::::::::::::::", lexer.rules);
+    //console.log("RULES:::::::::::::::", lexer.rules);
 
     lexer.setInput(input);
 
@@ -1814,7 +1814,7 @@ exports["test macro expansion in regex set atom"] = function() {
 
     var lexer = new RegExpLexer(dict);
     //console.log(lexer);
-    console.log("RULES:::::::::::::::", lexer.rules);
+    //console.log("RULES:::::::::::::::", lexer.rules);
 
     lexer.setInput(input);
 
@@ -1848,9 +1848,9 @@ exports["test nested macro expansion in regex set atoms"] = function() {
 
     var lexer = new RegExpLexer(dict);
     //console.log(lexer);
-    console.log("RULES:::::::::::::::", lexer.rules);
+    //console.log("RULES:::::::::::::::", lexer.rules);
     var expandedMacros = lexer.getExpandedMacros();
-    console.log("MACROS:::::::::::::::", expandedMacros);
+    //console.log("MACROS:::::::::::::::", expandedMacros);
     assert.equal(expandedMacros.DIGIT.in_set, '\\p{Number}');
     assert.equal(expandedMacros.ALPHA.in_set, '\\p{Alphabetic}');
     assert.equal(expandedMacros.ALNUM.in_set, '\\p{Number}\\p{Alphabetic}');
@@ -1881,9 +1881,9 @@ exports["test macros in regex set atoms are recognized when coming from grammar 
 
     var lexer = new RegExpLexer(dict);
     //console.log(lexer);
-    console.log("RULES:::::::::::::::", lexer.rules);
+    //console.log("RULES:::::::::::::::", lexer.rules);
     var expandedMacros = lexer.getExpandedMacros();
-    console.log("MACROS:::::::::::::::", expandedMacros);
+    //console.log("MACROS:::::::::::::::", expandedMacros);
     assert.equal(expandedMacros.DIGIT.in_set, '\\p{Number}');
     assert.equal(expandedMacros.ALPHA.in_set, '\\p{Alphabetic}');
     assert.equal(expandedMacros.ALNUM.in_set, '\\p{Number}\\p{Alphabetic}');
