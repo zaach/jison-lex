@@ -1667,5 +1667,237 @@ exports["test empty rule set with custom lexer"] = function() {
     assert.equal(lexer.lex(), lexer.EOF);
 };
 
+exports["test XRegExp option support"] = function() {
+    var dict = {
+        options: {
+          xregexp: true
+        },
+        rules: [
+            ["π", "return 'PI';" ],
+            ["\\p{Alphabetic}", "return 'Y';" ],
+            ["[\\p{Number}]", "return 'N';" ]
+        ]
+    };
+    var input = "πyαε";
+
+    var lexer = new RegExpLexer(dict);
+    //console.log(lexer);
+    //console.log("RULES:::::::::::::::", lexer.rules);
+
+    // ensure the XRegExp class is invoked for the unicode rules; see also the compilation validation test code
+    // inside the regexp-lexer.js file for the counterpart of this nasty test:
+    //
+    //    var __hacky_counter__ = 0;
+    //    function XRegExp(re, f) {
+    //      this.re = re;
+    //      this.flags = f;
+    //      var fake = /./;    // WARNING: this exact 'fake' is also depended upon by the xregexp unit test!
+    //      __hacky_counter__++;
+    //      fake.__hacky_backy__ = __hacky_counter__;
+    //      return fake;
+    //    }
+    //
+    var generated_ruleset = lexer.rules;
+    assert(generated_ruleset);
+    var xregexp_count = 0;
+    for (var i = 0; i < generated_ruleset.length; i++) {
+      var rule = generated_ruleset[i];
+      assert(rule);
+      //console.log("rule ", i, " = ", rule);
+      if (rule.__hacky_backy__) {
+        xregexp_count += rule.__hacky_backy__;
+      }
+    }
+    assert.equal(xregexp_count, 1 + 2);
+
+    // run the lexer and check the tokens produced by it: the faked version will be active but will deliver something
+    // similar to the real XRegExp for this particular ruleset only!
+
+    lexer.setInput(input);
+
+    assert.equal(lexer.lex(), "PI");
+    assert.equal(lexer.lex(), "Y");
+    assert.equal(lexer.lex(), "Y");
+    assert.equal(lexer.lex(), "Y");
+    assert.equal(lexer.lex(), lexer.EOF);
+};
+
+exports["test support for basic unicode regex compilation via internal xregexp"] = function() {
+    var dict = {
+        options: {
+          xregexp: false    // !!!
+        },
+        rules: [
+            ["π", "return 'PI';" ],
+            ["\\p{Alphabetic}", "return 'Y';" ],
+            ["[\\p{Number}]", "return 'N';" ]
+        ]
+    };
+    var input = "πyα1ε";
+
+    var lexer = new RegExpLexer(dict);
+    //console.log(lexer);
+    //console.log("RULES:::::::::::::::", lexer.rules);
+
+    var generated_ruleset = lexer.rules;
+    assert(generated_ruleset);
+    var xregexp_count = 0;
+    for (var i = 0; i < generated_ruleset.length; i++) {
+      var rule = generated_ruleset[i];
+      assert(rule);
+      //console.log("rule ", i, " = ", rule);
+      if (rule.__hacky_backy__) {
+        xregexp_count += rule.__hacky_backy__;
+      }
+    }
+    assert.equal(xregexp_count, 0);
+
+    // run the lexer
+
+    lexer.setInput(input);
+
+    assert.equal(lexer.lex(), "PI");
+    assert.equal(lexer.lex(), "Y");
+    assert.equal(lexer.lex(), "Y");
+    assert.equal(lexer.lex(), "N");
+    assert.equal(lexer.lex(), "Y");
+    assert.equal(lexer.lex(), lexer.EOF);
+};
+
+exports["test support for unicode macro expansion via internal xregexp"] = function() {
+    var dict = {
+        options: {
+          xregexp: false    // !!!
+        },
+        macros: {
+            "DIGIT": "[\\p{Number}]"
+        },
+        rules: [
+            ["π", "return 'PI';" ],
+            ["\\p{Alphabetic}", "return 'Y';" ],
+            ["{DIGIT}+", "return 'N';" ]
+        ]
+    };
+    var input = "πyα123ε";
+
+    var lexer = new RegExpLexer(dict);
+    //console.log(lexer);
+    console.log("RULES:::::::::::::::", lexer.rules);
+
+    lexer.setInput(input);
+
+    assert.equal(lexer.lex(), "PI");
+    assert.equal(lexer.lex(), "Y");
+    assert.equal(lexer.lex(), "Y");
+    assert.equal(lexer.lex(), "N");
+    assert.equal(lexer.match, "123");
+    assert.equal(lexer.lex(), "Y");
+    assert.equal(lexer.match, "ε");
+    assert.equal(lexer.lex(), lexer.EOF);
+};
+
+exports["test macro expansion in regex set atom"] = function() {
+    var dict = {
+        options: {
+          xregexp: false    // !!!
+        },
+        macros: {
+            "DIGIT": "[\\p{Number}]"
+        },
+        rules: [
+            ["π", "return 'PI';" ],
+            ["\\p{Alphabetic}", "return 'Y';" ],
+            ["{DIGIT}+", "return 'N';" ]
+        ]
+    };
+    var input = "πyα123ε";
+
+    var lexer = new RegExpLexer(dict);
+    //console.log(lexer);
+    console.log("RULES:::::::::::::::", lexer.rules);
+
+    lexer.setInput(input);
+
+    assert.equal(lexer.lex(), "PI");
+    assert.equal(lexer.lex(), "Y");
+    assert.equal(lexer.lex(), "Y");
+    assert.equal(lexer.lex(), "N");
+    assert.equal(lexer.match, "123");
+    assert.equal(lexer.lex(), "Y");
+    assert.equal(lexer.match, "ε");
+    assert.equal(lexer.lex(), lexer.EOF);
+};
+
+exports["test nested macro expansion in regex set atoms"] = function() {
+    var dict = {
+        options: {
+          xregexp: false    // !!!
+        },
+        macros: {
+            "DIGIT": "[\\p{Number}]",
+            "ALPHA": "[\\p{Alphabetic}]",
+            "ALNUM": "[{[{DIGIT}]}{[{ALPHA}]}]"
+        },
+        rules: [
+            ["π", "return 'PI';" ],
+            ["[{[{ALNUM}]}]+", "return 'Y';" ],
+            ["{DIGIT}+", "return 'N';" ]
+        ]
+    };
+    var input = "πyα123ε";
+
+    var lexer = new RegExpLexer(dict);
+    //console.log(lexer);
+    console.log("RULES:::::::::::::::", lexer.rules);
+    var expandedMacros = lexer.getExpandedMacros();
+    console.log("MACROS:::::::::::::::", expandedMacros);
+    assert.equal(expandedMacros.DIGIT.in_set, '\\p{Number}');
+    assert.equal(expandedMacros.ALPHA.in_set, '\\p{Alphabetic}');
+    assert.equal(expandedMacros.ALNUM.in_set, '\\p{Number}\\p{Alphabetic}');
+    assert.equal(expandedMacros.ALNUM.elsewhere, '[\\p{Number}\\p{Alphabetic}]');
+
+    lexer.setInput(input);
+
+    assert.equal(lexer.lex(), "PI");
+    assert.equal(lexer.lex(), "Y");
+    assert.equal(lexer.match, "yα123ε");
+    assert.equal(lexer.lex(), lexer.EOF);
+};
+
+exports["test macros in regex set atoms are recognized when coming from grammar string"] = function() {
+    var dict = [
+      "DIGIT [\\p{Number}]",
+      "ALPHA [\\p{Alphabetic}]",
+      "ALNUM [{DIGIT}{ALPHA}]",
+      "",
+      "%%",
+      "",
+      "π            return 'PI';",
+      "[{ALNUM}]+   return 'Y';",
+      "[{DIGIT}]+   return 'N';",
+    ].join('\n');
+
+    var input = "πyα123ε";
+
+    var lexer = new RegExpLexer(dict);
+    //console.log(lexer);
+    console.log("RULES:::::::::::::::", lexer.rules);
+    var expandedMacros = lexer.getExpandedMacros();
+    console.log("MACROS:::::::::::::::", expandedMacros);
+    assert.equal(expandedMacros.DIGIT.in_set, '\\p{Number}');
+    assert.equal(expandedMacros.ALPHA.in_set, '\\p{Alphabetic}');
+    assert.equal(expandedMacros.ALNUM.in_set, '\\p{Number}\\p{Alphabetic}');
+    assert.equal(expandedMacros.ALNUM.elsewhere, '[\\p{Number}\\p{Alphabetic}]');
+    assert.equal(expandedMacros.ALNUM.raw, '[{[{DIGIT}]}{[{ALPHA}]}]');
+
+    lexer.setInput(input);
+
+    assert.equal(lexer.lex(), "PI");
+    assert.equal(lexer.lex(), "Y");
+    assert.equal(lexer.match, "yα123ε");
+    assert.equal(lexer.lex(), lexer.EOF);
+};
+
+
 
 
