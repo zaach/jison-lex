@@ -1828,7 +1828,7 @@ exports["test macro expansion in regex set atom"] = function() {
     assert.equal(lexer.lex(), lexer.EOF);
 };
 
-exports["test nested macro expansion in regex set atoms"] = function() {
+exports["test nested macro expansion in xregexp set atoms"] = function() {
     var dict = {
         options: {
           xregexp: false    // !!!
@@ -1836,11 +1836,11 @@ exports["test nested macro expansion in regex set atoms"] = function() {
         macros: {
             "DIGIT": "[\\p{Number}]",
             "ALPHA": "[\\p{Alphabetic}]",
-            "ALNUM": "[{[{DIGIT}]}{[{ALPHA}]}]"
+            "ALNUM": "[{DIGIT}{ALPHA}]"
         },
         rules: [
             ["π", "return 'PI';" ],
-            ["[{[{ALNUM}]}]+", "return 'Y';" ],
+            ["[{ALNUM}]+", "return 'Y';" ],
             ["{DIGIT}+", "return 'N';" ]
         ]
     };
@@ -1888,7 +1888,7 @@ exports["test macros in regex set atoms are recognized when coming from grammar 
     assert.equal(expandedMacros.ALPHA.in_set, '\\p{Alphabetic}');
     assert.equal(expandedMacros.ALNUM.in_set, '\\p{Number}\\p{Alphabetic}');
     assert.equal(expandedMacros.ALNUM.elsewhere, '[\\p{Number}\\p{Alphabetic}]');
-    assert.equal(expandedMacros.ALNUM.raw, '[{[{DIGIT}]}{[{ALPHA}]}]');
+    assert.equal(expandedMacros.ALNUM.raw, '[{DIGIT}{ALPHA}]');
 
     lexer.setInput(input);
 
@@ -1898,6 +1898,131 @@ exports["test macros in regex set atoms are recognized when coming from grammar 
     assert.equal(lexer.lex(), lexer.EOF);
 };
 
+exports["test nested macro expansion in regex set atoms"] = function() {
+    var dict = {
+        options: {
+          xregexp: false
+        },
+        macros: {
+            "DIGIT": "[0-9]",
+            "ALPHA": "[a-zA-Z]",
+            "ALNUM": "[{DIGIT}{ALPHA}]"
+        },
+        rules: [
+            ["π", "return 'PI';" ],
+            ["[{ALNUM}]+", "return 'Y';" ],
+            ["{DIGIT}+", "return 'N';" ],
+            [".", "return '?';" ]
+        ]
+    };
+    var input = "πyα123εE";
 
+    var lexer = new RegExpLexer(dict);
+    //console.log(lexer);
+    //console.log("RULES:::::::::::::::", lexer.rules);
+    var expandedMacros = lexer.getExpandedMacros();
+    //console.log("MACROS:::::::::::::::", expandedMacros);
+    assert.equal(expandedMacros.DIGIT.in_set, '0-9');
+    assert.equal(expandedMacros.ALPHA.in_set, 'a-zA-Z');
+    assert.equal(expandedMacros.ALNUM.in_set, '0-9a-zA-Z');
+    assert.equal(expandedMacros.ALNUM.elsewhere, '[0-9a-zA-Z]');
 
+    lexer.setInput(input);
 
+    assert.equal(lexer.lex(), "PI");
+    assert.equal(lexer.lex() + '=' + lexer.match, "Y=y");
+    assert.equal(lexer.lex() + '=' + lexer.match, "?=α");
+    assert.equal(lexer.lex() + '=' + lexer.match, "Y=123");  // (!) not 'N=123' as ALNUM-based rule comes before DIGIT rule.
+    assert.equal(lexer.lex() + '=' + lexer.match, "?=ε");
+    assert.equal(lexer.lex() + '=' + lexer.match, "Y=E");
+    assert.equal(lexer.lex(), lexer.EOF);
+};
+
+exports["test nested macro expansion in regex set atoms with negating surrounding set (1 level)"] = function() {
+    var dict = {
+        options: {
+          xregexp: false
+        },
+        macros: {
+            "DIGIT": "[0-9]",
+            "ALPHA": "[a-zA-Z]",
+            "ALNUM": "[{DIGIT}{ALPHA}]",
+            "CTRL":  "[^{ALNUM}]",
+        },
+        rules: [
+            ["π", "return 'PI';" ],
+            ["{CTRL}+", "return 'C';" ],
+            ["[{ALNUM}]+", "return 'Y';" ],
+            ["{DIGIT}+", "return 'N';" ],
+            [".", "return '?';" ],
+        ]
+    };
+    var input = "πyα * +123.@_[]εE";
+
+    var lexer = new RegExpLexer(dict);
+    //console.log(lexer);
+    //console.log("RULES:::::::::::::::", lexer.rules);
+    var expandedMacros = lexer.getExpandedMacros();
+    //console.log("MACROS:::::::::::::::", expandedMacros);
+    assert.equal(expandedMacros.DIGIT.in_set, '0-9');
+    assert.equal(expandedMacros.ALPHA.in_set, 'a-zA-Z');
+    assert.equal(expandedMacros.ALNUM.in_set, '0-9a-zA-Z');
+    assert.equal(expandedMacros.ALNUM.elsewhere, '[0-9a-zA-Z]');
+    assert.equal(expandedMacros.CTRL.in_set, '^0-9a-zA-Z');
+    assert.equal(expandedMacros.CTRL.elsewhere, '[^0-9a-zA-Z]');
+
+    lexer.setInput(input);
+
+    assert.equal(lexer.lex(), "PI");
+    assert.equal(lexer.lex() + '=' + lexer.match, "Y=y");
+    assert.equal(lexer.lex() + '=' + lexer.match, "C=α * +");
+    assert.equal(lexer.lex() + '=' + lexer.match, "Y=123");  // (!) not 'N=123' as ALNUM-based rule comes before DIGIT rule.
+    assert.equal(lexer.lex() + '=' + lexer.match, "C=.@_[]ε");
+    assert.equal(lexer.lex() + '=' + lexer.match, "Y=E");
+    assert.equal(lexer.lex(), lexer.EOF);
+};
+
+exports["test nested macro expansion in regex set atoms with negating inner set"] = function() {
+    var dict = {
+        options: {
+          xregexp: false
+        },
+        macros: {
+            "DIGIT": "[0-9]",
+            "ALPHA": "[a-zA-Z]",
+            "ALNUM": "[{DIGIT}{ALPHA}]",
+            "CTRL":  "[^{ALNUM}]",
+            "WORD":  "[^{CTRL}]",
+        },
+        rules: [
+            ["π", "return 'PI';" ],
+            ["{CTRL}+", "return 'C';" ],
+            ["[{WORD}]+", "return 'Y';" ],
+            ["[{DIGIT}]+", "return 'N';" ],
+            [".", "return '?';" ],
+        ]
+    };
+    var input = "πyα * +123.@_[]εE";
+
+    var lexer = new RegExpLexer(dict);
+    //console.log(lexer);
+    //console.log("RULES:::::::::::::::", lexer.rules);
+    var expandedMacros = lexer.getExpandedMacros();
+    //console.log("MACROS:::::::::::::::", expandedMacros);
+    assert.equal(expandedMacros.DIGIT.in_set, '0-9');
+    assert.equal(expandedMacros.ALPHA.in_set, 'a-zA-Z');
+    assert.equal(expandedMacros.ALNUM.in_set, '0-9a-zA-Z');
+    assert.equal(expandedMacros.ALNUM.elsewhere, '[0-9a-zA-Z]');
+    assert.equal(expandedMacros.CTRL.in_set, '\\u0000-/:-@\\[-`{-\\uffff' /* '^0-9a-zA-Z' */ );
+    assert.equal(expandedMacros.CTRL.elsewhere, '[^0-9a-zA-Z]');
+
+    lexer.setInput(input);
+
+    assert.equal(lexer.lex(), "PI");
+    assert.equal(lexer.lex() + '=' + lexer.match, "Y=y");
+    assert.equal(lexer.lex() + '=' + lexer.match, "C=α * +");
+    assert.equal(lexer.lex() + '=' + lexer.match, "Y=123");  // (!) not 'N=123' as ALNUM-based rule comes before DIGIT rule.
+    assert.equal(lexer.lex() + '=' + lexer.match, "C=.@_[]ε");
+    assert.equal(lexer.lex() + '=' + lexer.match, "Y=E");
+    assert.equal(lexer.lex(), lexer.EOF);
+};
