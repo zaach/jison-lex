@@ -130,85 +130,609 @@ function prepareRules(dict, actions, caseHelper, tokens, startConditions, opts) 
     };
 }
 
+// 'Join' a regex set `[...]` into a Unicode range spanning logic array, flagging every character in the given set.
+function set2bitarray(arr2deep, s) {
+    var orig = s;
+    var set_is_inverted = false;
+
+    function mark(d1, d2) {
+        if (d2 == null) d2 = d1;
+        for (var i = d1; i <= d2; i++) {
+            l[i] = true;
+        }
+    }
+
+    function eval_escaped_code(s) {
+        try {
+            return eval('"' + s.replace(/\"/g, '\\"') + '"');
+        } catch (ex) {
+            console.error("eval of '" + s + "' failed: ", ex);
+            throw ex;
+        }
+    }
+
+    if (s && s.length) {
+        // inverted set?
+        if (s[0] === '^') {
+            set_is_inverted = true;
+            s = s.substr(1);
+        }
+        // A[0] collects flags for non-inverted set, A[1] collects flags for inverted set; this is presumably faster
+        // than inverting the entire set just because we hit a '^' at the start of this set!
+        //
+        // A[2] flags if l[0] has been touched, A[3] ditto for A[1]
+        arr2deep[2 + set_is_inverted] = true;
+        var l = arr2deep[0 + set_is_inverted];
+
+        //console.log('set2bitarray: ', { l: l, set_is_inverted: set_is_inverted });
+    
+        var chr_re = /^(?:[^\\]|\\[^cxu0-9]|\\[0-9]{1,3}|\\c[A-Z]|\\x[0-9a-fA-F]{2}|\\u[0-9a-fA-F]{4})/;
+        var xregexp_unicode_escape_re = /^\{[A-Za-z0-9 \-\._]+\}/;              // Matches the XRegExp Unicode escape braced part, e.g. `{Number}`
+
+        while (s.length) {
+            var c1 = s.match(chr_re);
+            if (!c1) {
+                // hit an illegal escape sequence? cope anyway!
+                c1 = s[0];
+            } else {
+                c1 = c1[0];
+                // Quick hack for XRegExp escapes inside a regex `[...]` set definition: we *could* try to keep those
+                // intact but it's easier to unfold them here; this is not nice for when the grammar specifies explicit
+                // XRegExp support, but alas, we'll get there when we get there... ;-)
+                if (c1 === '\\p') {
+                    s = s.substr(c1.length);
+                    var c2 = s.match(xregexp_unicode_escape_re);
+                    if (c2) {
+                        c2 = c2[0];
+                        s = s.substr(c2.length);
+                        // expand escape:
+                        var xr = new XRegExp('[' + c1 + c2 + ']');           // TODO: case-insensitive grammar???
+                        var xs = '' + xr;
+                        // remove the wrapping `/[...]/`:
+                        console.log('expanding XRegExp escape: ', xr, ' --> ', xs);
+                        xs = xs.substr(2, xs.length - 4);
+                        // inject back into source string:
+                        s = xs + s;
+                        continue;
+                    }
+                }
+            }
+            var v1 = eval_escaped_code(c1);
+            v1 = v1.charCodeAt(0);
+            s = s.substr(c1.length);
+            //console.log('chr = ', { c: c1, v: v1, s: s });
+
+            if (s[0] === '-' && s.length >= 2) {
+                // we can expect a range like 'a-z':
+                s = s.substr(1);
+                var c2 = s.match(chr_re);
+                if (!c2) {
+                    // hit an illegal escape sequence? cope anyway!
+                    c2 = s[0];
+                } else {
+                    c2 = c2[0];
+                }
+                var v2 = eval_escaped_code(c2);
+                v2 = v2.charCodeAt(0);
+                s = s.substr(c2.length);
+                //console.log('chr 2 = ', { c: c2, v: v2, s: s });
+
+                // legal ranges go UP, not /DOWN!
+                if (v1 <= v2) {
+                    mark(v1, v2);
+                } else {
+                    console.warn("INVALID CHARACTER RANGE found in regex: ", { re: orig, start: c1, start_n: v1, end: c2, end_n: v2 });
+                    mark(v1);
+                    mark('-'.charCodeAt(0));
+                    mark(v2);
+                }
+                continue;
+            }
+            mark(v1);
+        }
+    }
+}
+
+
+// convert a simple bitarray back into a regex set `[...]` content:
+function bitarray2set(l, output_inverted_variant) {
+    l = l[0];
+
+    function i2c(i) {
+        var c;
+
+        if (i < 32 || i > 127) {
+            c = '0000' + i.toString(16);
+            return '\\u' + c.substr(c.length - 4);
+        }
+        switch (i) {
+        case 45:        // ASCII/Unicode for '-' dash
+            return '\\-';
+
+        case 91:        // '['
+            return '\\[';
+
+        case 92:        // '\\'
+            return '\\\\';
+
+        case 93:        // ']'
+            return '\\]';
+        }
+        return String.fromCharCode(i);
+    }
+
+    //console.log('sentinel!');
+    // construct the inverse(?) set from the mark-set:
+    //
+    // Before we do that, we inject a sentinel so that our inner loops
+    // below can be simple and fast:
+    l[65536] = 1;
+    // now reconstruct the regex set:
+    var rv = [];
+    var i;
+    var j;
+    if (output_inverted_variant) {
+        i = 0;
+        while (i <= 65535) {
+            // find first character not in original set:
+            //console.log('look for start @ :', i);
+            while (l[i]) {
+                i++;
+            }
+            if (i > 65535) {
+                break;
+            }
+            // find next character not in original set:
+            //console.log('look for end @ :', i + 1);
+            for (j = i + 1; !l[j]; j++) {} /* empty loop */
+            // generate subset:
+            //console.log('found inv range:', i, j - 1);
+            rv.push(i2c(i));
+            if (j - 1 > i) {
+                rv.push((j - 2 > i ? '-' : '') + i2c(j - 1));
+            }
+            i = j;
+        }
+    } else {
+        // generate the inverted set, hence all logic checks are inverted here... 
+        i = 0;
+        while (i <= 65535) {
+            // find first character not in original set:
+            //console.log('look for start @ :', i);
+            while (!l[i]) {
+                i++;
+            }
+            if (i > 65535) {
+                break;
+            }
+            // find next character not in original set:
+            //console.log('look for end @ :', i + 1);
+            for (j = i + 1; l[j]; j++) {} /* empty loop */
+            if (j > 65536) {
+                j = 65536;
+            }
+            // generate subset:
+            //console.log('found inv range:', i, j - 1);
+            rv.push(i2c(i));
+            if (j - 1 > i) {
+                rv.push((j - 2 > i ? '-' : '') + i2c(j - 1));
+            }
+            i = j;
+        }
+    }
+    //console.log('end of find loop:', rv);
+    var s = rv.join('');
+
+    return s;
+}
+
+
+// Pretty brutal conversion of 'regex' `s` back to raw regex set content: strip outer [...] when they're there;
+// ditto for inner combos of sets, i.e. `]|[` as in `[0-9]|[a-z]`.
+function reduceRegexToSet(s, name) {
+    var orig = s;
+    
+    console.log('REDUX: ', s);
+
+    var chr_re = /^(?:[^\\]|\\[^cxu0-9]|\\[0-9]{1,3}|\\c[A-Z]|\\x[0-9a-fA-F]{2}|\\u[0-9a-fA-F]{4})/;
+    var set_part_re = /^(?:[^\\\]]|\\[^cxu0-9]|\\[0-9]{1,3}|\\c[A-Z]|\\x[0-9a-fA-F]{2}|\\u[0-9a-fA-F]{4})+/;
+    var nothing_special_re = /^(?:[^\\\[\]\(\)\|^]|\\[^cxu0-9]|\\[0-9]{1,3}|\\c[A-Z]|\\x[0-9a-fA-F]{2}|\\u[0-9a-fA-F]{4})+/;
+
+    var l = [new Array(65536 + 3), new Array(65536 + 3), false, false];
+    var internal_state = 0;
+
+    while (s.length) {
+        var c1 = s.match(chr_re);
+        //console.log('C1: ', c1);
+        if (!c1) {
+            // cope with illegal escape sequences too!
+            throw new Error('illegal escape sequence at start of regex part: "' + s + '" of regex "' + orig + '"');
+        } else {
+            c1 = c1[0];
+        }
+        s = s.substr(c1.length);
+
+        switch (c1) {
+        case '[':
+            // this is starting a set within the regex: scan until end of set!
+            var set_content = [];
+            while (s.length) {
+                var inner = s.match(set_part_re);
+                //console.log('inner A: ', inner, s);
+                if (!inner) {
+                    inner = s.match(chr_re);
+                    //console.log('inner B: ', inner);
+                    if (!inner) {
+                            // cope with illegal escape sequences too!
+                        throw new Error('illegal escape sequence at start of regex part: ' + s + '" of regex "' + orig + '"');
+                    } else {
+                        inner = inner[0];
+                    }
+                    if (inner === ']') break;
+                } else {
+                    inner = inner[0];
+                }
+                set_content.push(inner);
+                s = s.substr(inner.length);
+            }
+
+            // ensure that we hit the terminating ']':
+            var c2 = s.match(chr_re);
+            if (!c2) {
+                // cope with illegal escape sequences too!
+                console.log(set_content);
+                throw new Error('regex set expression is broken in regex: "' + orig + '" --> "' + s + '"');
+            } else {
+                c2 = c2[0];
+            }
+            if (c2 !== ']') {
+                throw new Error('regex set expression is broken in regex: ' + orig);
+            }
+            s = s.substr(c2.length);
+
+            var se = set_content.join('');
+            if (!internal_state) {
+                set2bitarray(l, se);
+
+                // a set is to use like a single character in a longer literal phrase, hence input `[abc]word[def]` would thus produce output `[abc]`: 
+                internal_state = 1;
+            }
+            break;
+
+        // Strip unescaped pipes to catch constructs like `\\r|\\n` and turn them into
+        // something ready for use inside a regex set, e.g. `\\r\\n`.
+        // 
+        // > Of course, we realize that converting more complex piped constructs this way
+        // > will produce something you might not expect, e.g. `A|WORD2` which
+        // > would end up as the set `[AW]` which is something else than the input
+        // > entirely.
+        // > 
+        // > However, we can only depend on the user (grammar writer) to realize this and 
+        // > prevent this from happening by not creating such oddities in the input grammar. 
+        case '|':
+            // a|b --> [ab]
+            internal_state = 0;
+            break;
+
+        case '(':
+            // (a) --> a
+            //
+            // TODO - right now we treat this as 'too complex':
+
+            // Strip off some possible outer wrappers which we know how to remove.
+            // We don't worry about 'damaging' the regex as any too-complex regex will be caught
+            // in the validation check at the end; our 'strippers' here would not damage useful
+            // regexes anyway and them damaging the unacceptable ones is fine.
+            s = s.replace(/^\((?:\?:)?(.*?)\)$/, '$1');         // (?:...) -> ...  and  (...) -> ...
+            s = s.replace(/^\^?(.*?)\$?$/, '$1');               // ^...$ --> ...  (catch these both inside and outside the outer grouping, hence do the ungrouping twice: one before, once after this)
+            s = s.replace(/^\((?:\?:)?(.*?)\)$/, '$1');         // (?:...) -> ...  and  (...) -> ...
+            console.log('REDUX B: ', s);
+
+            throw new Error('[macro [' + name + '] is unsuitable for use inside regex set expressions: "[' + orig + ']"]'); 
+
+        case '.':
+        case '*':
+        case '+':
+        case '?':
+            // wildcard
+            //
+            // TODO - right now we treat this as 'too complex':
+            throw new Error('[macro [' + name + '] is unsuitable for use inside regex set expressions: "[' + orig + ']"]'); 
+
+        case '{':                        // range, e.g. `x{1,3}`, or macro?
+            // TODO - right now we treat this as 'too complex':
+            throw new Error('[macro [' + name + '] is unsuitable for use inside regex set expressions: "[' + orig + ']"]'); 
+
+        default:
+            // literal character or word: take the first character only and ignore the rest, so that
+            // the constructed set for `word|noun` would be `[wb]`:
+            if (!internal_state) {
+                set2bitarray(l, c1);
+
+                internal_state = 2;
+            }
+            break;
+        }
+    }
+
+    // now mix any negated set data into the non-negated bitarray:
+    if (l[3]) {
+        var a = l[0];
+        var b = l[1];
+        for (var i = 0; i < 65536; i++) {
+            if (!b[i]) {
+                a[i] = 1;
+            }
+        }
+    }
+
+    s = bitarray2set(l);
+
+    console.log("reduceRegexToSet result: ", s);
+
+    // When this result is suitable for use in a set, than we should be able to compile 
+    // it in a regex; that way we can easily validate whether macro X is fit to be used 
+    // inside a regex set:
+    try {
+        var re;
+        re = new XRegExp('[' + s + ']');
+        re.test(s[0]);
+
+        // One thing is apparently *not* caught by the RegExp compile action above: `[a[b]c]`
+        // so we check for lingering UNESCAPED brackets in here as those cannot be:
+        if (/[^\\][\[\]]/.exec(s)) {
+            throw new Error('unescaped brackets in set data');
+        }
+    } catch (ex) {
+        // make sure we produce a set range expression which will fail badly when it is used
+        // in actual code:
+        s = '[macro [' + name + '] is unsuitable for use inside regex set expressions: "[' + s + ']"]'; 
+    }
+
+    return s;
+}
+
+
+// expand all macros (with maybe one exception) in the given regex: the macros may exist inside `[...]` regex sets or 
+// elsewhere, which requires two different treatments to expand these macros.
+function reduceRegex(s, name, expandAllMacrosInSet_cb, expandAllMacrosElsewhere_cb) {
+    var orig = s;
+
+    function errinfo() {
+        if (name) {
+            return 'macro [[' + name + ']]'; 
+        } else {
+            return 'regex [[' + orig + ']]';
+        }
+    }
+
+    console.log('REDUX ELSEWHERE: ', s);
+
+    var chr_re = /^(?:[^\\]|\\[^cxu0-9]|\\[0-9]{1,3}|\\c[A-Z]|\\x[0-9a-fA-F]{2}|\\u[0-9a-fA-F]{4})/;
+    var set_part_re = /^(?:[^\\\]]|\\[^cxu0-9]|\\[0-9]{1,3}|\\c[A-Z]|\\x[0-9a-fA-F]{2}|\\u[0-9a-fA-F]{4})+/;
+    var nothing_special_re = /^(?:[^\\\[\]\(\)\|^\{\}]|\\[^cxu0-9]|\\[0-9]{1,3}|\\c[A-Z]|\\x[0-9a-fA-F]{2}|\\u[0-9a-fA-F]{4})+/;
+    var xregexp_unicode_escape_re = /^\{[A-Za-z0-9 \-\._]+\}/;              // Matches the XRegExp Unicode escape braced part, e.g. `{Number}`
+
+    var rv = [];
+
+    while (s.length) {
+        var c1 = s.match(chr_re);
+        //console.log('C1: ', c1);
+        if (!c1) {
+            // cope with illegal escape sequences too!
+            throw new Error(errinfo() + ': illegal escape sequence at start of regex part: ' + s);
+        } else {
+            c1 = c1[0];
+        }
+        s = s.substr(c1.length);
+
+        switch (c1) {
+        case '[':
+            // this is starting a set within the regex: scan until end of set!
+            var set_content = [];
+            var l = [new Array(65536 + 3), new Array(65536 + 3), false, false];
+
+            while (s.length) {
+                var inner = s.match(set_part_re);
+                //console.log('inner A: ', inner, s);
+                if (!inner) {
+                    inner = s.match(chr_re);
+                    //console.log('inner B: ', inner);
+                    if (!inner) {
+                            // cope with illegal escape sequences too!
+                        throw new Error(errinfo() + ': illegal escape sequence at start of regex part: ' + s);
+                    } else {
+                        inner = inner[0];
+                    }
+                    if (inner === ']') break;
+                } else {
+                    inner = inner[0];
+                }
+                set_content.push(inner);
+                s = s.substr(inner.length);
+            }
+
+            // ensure that we hit the terminating ']':
+            var c2 = s.match(chr_re);
+            if (!c2) {
+                // cope with illegal escape sequences too!
+                console.log(set_content);
+                throw new Error(errinfo() + ': regex set expression is broken: "' + s + '"');
+            } else {
+                c2 = c2[0];
+            }
+            if (c2 !== ']') {
+                throw new Error(errinfo() + ': regex set expression is broken: apparently unterminated');
+            }
+            s = s.substr(c2.length);
+
+            var se = set_content.join('');
+
+            console.log('regex ex before expansion: ', se);
+
+            // expand any macros in here:
+            if (expandAllMacrosInSet_cb) {
+                se = expandAllMacrosInSet_cb(se);
+            }
+
+            console.log('regex ex after expansion: ', se);
+
+            set2bitarray(l, se);
+
+            // now mix any negated set data into the non-negated bitarray:
+            if (l[3]) {
+                var a = l[0];
+                var b = l[1];
+                for (var i = 0; i < 65536; i++) {
+                    if (!b[i]) {
+                        a[i] = 1;
+                    }
+                }
+            }
+
+            // find out which set expression is optimal in size:
+            var s1 = bitarray2set(l);
+            var s2 = '^' + bitarray2set(l, true);
+            if (s2.length < s1.length) {
+                s1 = s2;
+            }
+            rv.push('[' + s1 + ']');
+            break;
+
+        // XRegExp Unicode escape, e.g. `\\p{Number}`:
+        case '\\p':
+            var c2 = s.match(xregexp_unicode_escape_re);
+            if (c2) {
+                c2 = c2[0];
+                s = s.substr(c2.length);
+
+                // nothing to expand.
+                rv.push(c1 + c2);
+            } else {
+                // nothing to stretch this match, hence nothing to expand.
+                rv.push(c1);
+            }
+            break;
+
+
+        // Either a range expression or the start of a macro reference: `.{1,3}` or `{NAME}`.
+        // Treat it as a macro reference and see if it will expand to enything:
+        case '{':
+            var c2 = s.match(nothing_special_re);
+            if (c2) {
+                c2 = c2[0];
+                s = s.substr(c2.length);
+
+                var c3 = s[0];
+                s = s.substr(c3.length);
+                if (c3 === '}') {
+                    // possibly a macro name in there... Expand if possible:
+                    c2 = c1 + c2 + c3;
+                    if (expandAllMacrosElsewhere_cb) {
+                        c2 = expandAllMacrosElsewhere_cb(c2);
+                    }
+                } else {
+                    // not a well-terminated macro reference or something completely different: 
+                    // we do not even attempt to expand this as there's guaranteed nothing to expand
+                    // in this bit.
+                    c2 = c1 + c2 + c3;
+                }
+                rv.push(c2);
+            } else {
+                // nothing to stretch this match, hence nothing to expand.
+                rv.push(c1);
+            }
+            break;
+
+        // Recognize some other regex elements, but there's no need to understand them all. 
+        //
+        // We are merely interested in any chunks now which do *not* include yet another regex set `[...]`
+        // nor any `{MACRO}` reference:
+        default:
+            // non-set character or word: see how much of this there is for us and then see if there
+            // are any macros still lurking inside there:
+            var c2 = s.match(nothing_special_re);
+            if (c2) {
+                c2 = c2[0];
+                s = s.substr(c2.length);
+
+                // nothing to expand.
+                rv.push(c1 + c2);
+            } else {
+                // nothing to stretch this match, hence nothing to expand.
+                rv.push(c1);
+            }
+            break;
+        }
+    }
+
+    console.log("reduceRegex result: ", rv);
+
+    s = rv.join('');
+    
+    // When this result is suitable for use in a set, than we should be able to compile 
+    // it in a regex; that way we can easily validate whether macro X is fit to be used 
+    // inside a regex set:
+    try {
+        var re;
+        re = new XRegExp(s);
+        re.test(s[0]);
+    } catch (ex) {
+        // make sure we produce a regex expression which will fail badly when it is used
+        // in actual code:
+        throw new Error(errinfo() + ': expands to an invalid regex: /' + s + '/'); 
+    }
+
+    return s;
+}
+
+
+// 'normalize' a `[...]` set by inverting an inverted `[^...]` set:
+function normalizeSet(s, output_inverted_variant) {
+    var orig = s;
+
+    // propagate deferred exceptions = error reports.
+    if (s instanceof Error) {
+        return s;
+    }
+
+    output_inverted_variant = !output_inverted_variant;
+
+    if (s && s.length) {
+        // inverted set?
+        if (s[0] === '^') {
+            output_inverted_variant = !output_inverted_variant;
+            s = s.substr(1);
+        }
+        console.log('normalize: ', { s: s, inv: output_inverted_variant });
+
+        var l = [new Array(65536 + 3), new Array(65536 + 3), false, false];
+        set2bitarray(l, s);
+
+        // now mix any negated set data into the non-negated bitarray:
+        if (l[3]) {
+            var a = l[0];
+            var b = l[1];
+            for (var i = 0; i < 65536; i++) {
+                if (!b[i]) {
+                    a[i] = 1;
+                }
+            }
+        }
+
+        s = bitarray2set(l, !output_inverted_variant);
+    }
+
+    console.log('normalizeSet result: ', { re: s, inverted: output_inverted_variant });
+    return s;
+}
+
+
+
+
 // expand macros within macros and cache the result
 function prepareMacros(dict_macros, opts) {
     var macros = {};
-
-    // Pretty brutal conversion of 'regex' in macro back to raw set: strip outer [...] when they're there;
-    // ditto for inner combos of sets, i.e. `]|[` as in `[0-9]|[a-z]`.
-    //
-    // Of course this brutish approach is NOT SMART enough to cope with *negated* sets such as
-    // `[^0-9]` in nested macros!
-    function reduceRegexToSet(s, name) {
-        // First make sure legal regexes such as `[-@]` or `[@-]` get their hyphens at the edges
-        // properly escaped as they'll otherwise produce havoc when being combined into new
-        // sets thanks to macro expansion inside the outer regex set expression.
-        var m = s.split('\\\\'); // help us find out which chars in there are truly escaped
-        for (var i = 0, len = m.length; i < len; i++) {
-            s = ' ' + m[i]; // make our life easier when we check the next regex(es)...
-
-            // Any unescaped '[' or ']' is the begin/end marker of a regex set, hence when 
-            // such sets start/end with a '-' dash, it's a *literal* dash, and since we expect
-            // to be merging regex sets, we MUST escape all literaL dashes like that.
-            s = s.replace(/([^\\])\[-/g, '$1[\\-').replace(/-\]/g, '\\-]');
-
-            // Catch the remains of constructs like `[0-9]|[a-z]`.
-            s = s.replace(/([^\\])\]\|\[/g, '$1');
-
-            // Strip unescaped pipes to catch constructs like `\\r|\\n` and turn them into
-            // something ready for use inside a regex set, e.g. `\\r\\n`.
-            // 
-            // > Of course, we realize that converting more complex piped constructs this way
-            // > will produce something you might not expect, e.g. `A|WORD2` -> `AWORD2` which
-            // > would then end up as the set `[AWORD2]` which is something else than the input
-            // > entirely.
-            // > 
-            // > However, we can only depend on the user (grammar writer) to realize this and 
-            // > prevent this from happening by not creating such oddities in the input grammar. 
-            s = s.replace(/([^\\])\|/g, '$1');
-
-            m[i] = s.substr(1, s.length - 1);
-        }
-        s = m.join('\\\\');
-
-        // Also remove the outer brackets if this thing is a set all by itself: we accept either
-        // `[0-9]` or `0-9` as good macro content to land in a (larger) set and this should
-        // take care of the `[]` brackets around the former.
-        // 
-        // Also strip off some other possible outer wrappers which we know how to remove.
-        // We don't worry about 'damaging' the regex as any too-complex regex will be caught
-        // in the validation check at the end; our 'strippers' here would not damage useful
-        // regexes anyway and them damaging the unacceptable ones is fine.
-        s = s.replace(/^\((?:\?:)?(.*?)\)$/, '$1');       // (?:...) -> ...  and  (...) -> ...
-        s = s.replace(/^\[(.*?)\]$/, '$1');
-
-        // Now ensure that any `-` dash at the start or end of the set list is properly escaped:
-        // we won't have caught all of them yet above, just the ones in sub-sets!
-        
-        s = s.replace(/^-/, '\\-');
-        s = s.replace(/-$/, '\\-');
-
-        // When this result is suitable for use in a set, than we should be able to compile 
-        // it in a regex; that way we can easily validate whether macro X is fit to be used 
-        // inside a regex set:
-        try {
-            var re;
-            re = new XRegExp('[' + s + ']');
-            re.test(s[0]);
-
-            // One thing is apparently *not* caught by the RegExp compile action above: `[a[b]c]`
-            // so we check for lingering UNESCAPED brackets in here as those cannot be:
-            if (/[^\\][\[\]]/.exec(s)) {
-                throw 'unescaped brackets in set data';
-            }
-        } catch (ex) {
-            // make sure we produce a set range expression which will fail badly when it is used
-            // in actual code:
-            s = '[macro \'' + name + '\' is unsuitable for use inside regex set expressions: "[' + s + ']"]'; 
-        }
-
-        return s;
-    }
 
     // expand a `{NAME}` macro which exists inside a `[...]` set:
     function expandMacroInSet(i) {
@@ -216,44 +740,65 @@ function prepareMacros(dict_macros, opts) {
         if (!macros[i]) {
             m = dict_macros[i];
 
-            for (k in dict_macros) {
-                if (dict_macros.hasOwnProperty(k) && i !== k) {
-                    // it doesn't matter if the lexer recognized that the inner macro(s)
-                    // were sitting inside a `[...]` set or not: the fact that they are used
-                    // here in macro `i` which itself sits in a set, makes them *all* live in
-                    // a set so all of them get the same treatment: set expansion style.
-                    a = m.split('{[{' + k + '}]}');
-                    if (a.length > 1) {
-                        m = a.join(expandMacroInSet(k));
-                    }
-                    
-                    // Note: make sure we don't try to expand any XRegExp `\p{...}` or `\P{...}`
-                    // macros here:
-                    if (XRegExp.isUnicodeSlug(k)) {
-                        // Work-around so that you can use `\p{ascii}` for an XRegExp slug
-                        // while using `\p{ASCII}` as a *macro expansion* of the `ASCII`
-                        // macro:
-                        if (k.toUpperCase() !== k) {
-                            throw 'Cannot use name "' + k + '" as a macro name as it clashes with the same XRegExp "\\p{..}" Unicode slug name. Use all-uppercase macro names, e.g. name your macro "' + k.toUpperCase() + '" to work around this issue or give your offending macro a different name.';
-                        }
-                    }
+            if (m.indexOf('{') >= 0) {
+                // set up our own record so we can detect definition loops:
+                macros[i] = {
+                    in_set: false,
+                    in_inv_set: false,
+                    elsewhere: null,
+                    raw: dict_macros[i]
+                };
 
-                    a = m.split('{' + k + '}');
-                    if (a.length > 1) {
-                        m = a.join(expandMacroInSet(k));
+                for (k in dict_macros) {
+                    if (dict_macros.hasOwnProperty(k) && i !== k) {
+                        // it doesn't matter if the lexer recognized that the inner macro(s)
+                        // were sitting inside a `[...]` set or not: the fact that they are used
+                        // here in macro `i` which itself sits in a set, makes them *all* live in
+                        // a set so all of them get the same treatment: set expansion style.
+                        //
+                        // Note: make sure we don't try to expand any XRegExp `\p{...}` or `\P{...}`
+                        // macros here:
+                        if (XRegExp.isUnicodeSlug(k)) {
+                            // Work-around so that you can use `\p{ascii}` for an XRegExp slug
+                            // while using `\p{ASCII}` as a *macro expansion* of the `ASCII`
+                            // macro:
+                            if (k.toUpperCase() !== k) {
+                                throw 'Cannot use name "' + k + '" as a macro name as it clashes with the same XRegExp "\\p{..}" Unicode slug name. Use all-uppercase macro names, e.g. name your macro "' + k.toUpperCase() + '" to work around this issue or give your offending macro a different name.';
+                            }
+                        }
+
+                        a = m.split('{' + k + '}');
+                        if (a.length > 1) {
+                            m = a.join(expandMacroInSet(k));
+                        }
                     }
                 }
             }
 
-            m = reduceRegexToSet(m, i);
+            try {
+                m = reduceRegexToSet(m, i);
+            } catch (ex) {
+                m = ex;
+            }
 
             macros[i] = {
-                in_set: m,
+                in_set: normalizeSet(m),
+                in_inv_set: normalizeSet(m, true),
                 elsewhere: null,
                 raw: dict_macros[i]
             };
         } else {
             m = macros[i].in_set;
+
+            if (m instanceof Error) {
+                // this turns out to be an macro with 'issues' and it is used, so the 'issues' do matter: bombs away!
+                throw m;
+            }
+
+            // detect definition loop:
+            if (m === false) {
+                throw new Error('Macro name "' + i + '" has an illegal, looping, definition, i.e. it\'s definition references itself, either directly or indirectly, via other macros.');
+            }
         }
 
         return m;
@@ -262,36 +807,90 @@ function prepareMacros(dict_macros, opts) {
     function expandMacroElsewhere(i) {
         var k, a, m;
 
-        if (!macros[i].elsewhere) {
+        if (macros[i].elsewhere == null) {
             m = dict_macros[i];
 
+            // set up our own record so we can detect definition loops:
+            macros[i].elsewhere = false;
+
             // the macro MAY contain other macros which MAY be inside a `[...]` set in this
-            // macro, hence we first expand those submacros all the way:
-            for (k in dict_macros) {
-                if (dict_macros.hasOwnProperty(k) && i !== k) {
-                    a = m.split('{[{' + k + '}]}');
-                    if (a.length > 1) {
-                        m = a.join(macros[k].in_set);
-                    }
-                    
-                    a = m.split('{' + k + '}');
-                    if (a.length > 1) {
-                        m = a.join('(?:' + expandMacroElsewhere(k) + ')');
-                    }
-                }
-            }
+            // macro or elsewhere, hence we must parse the regex:
+            m = reduceRegex(m, i, expandAllMacrosInSet, expandAllMacrosElsewhere);
 
             macros[i].elsewhere = m;
         } else {
             m = macros[i].elsewhere;
+
+            // detect definition loop:
+            if (m === false) {
+                throw new Error('Macro name "' + i + '" has an illegal, looping, definition, i.e. it\'s definition references itself, either directly or indirectly, via other macros.');
+            }
         }
+
+        console.log("expandMacroElsewhere result: ", m);
 
         return m;
     }
 
+    function expandAllMacrosInSet(s) {
+        var i, m;
+
+        // process *all* the macros inside [...] set:
+        if (s.indexOf('{') >= 0) {
+            for (i in macros) {
+                if (macros.hasOwnProperty(i)) {
+                    m = macros[i];
+
+                    var x = expandMacroInSet(i);
+                    s = s.split('{' + i + '}').join(x);
+                    console.log('attempt to expand in set: ', i, ' --> ', s, ' // ', x);
+
+                    // stop the brute-force expansion attempt when we done 'em all:
+                    if (s.indexOf('{') === -1) {
+                        break;
+                    }
+                }
+            }
+        }
+
+        return s;
+    }
+
+    function expandAllMacrosElsewhere(s) {
+        var i, m;
+
+        // When we process the remaining macro occurrences in the regex
+        // every macro used in a lexer rule will become its own capture group.
+        // 
+        // Meanwhile the cached expansion will expand any submacros into
+        // *NON*-capturing groups so that the backreference indexes remain as you'ld
+        // expect and using macros doesn't require you to know exactly what your
+        // used macro will expand into, i.e. which and how many submacros it has.
+        // 
+        // This is a BREAKING CHANGE from vanilla jison 0.4.15! 
+        if (s.indexOf('{') >= 0) {
+            for (i in macros) {
+                if (macros.hasOwnProperty(i)) {
+                    m = macros[i];
+
+                    // These are all submacro expansions, hence non-capturing grouping is applied:
+                    s = s.split('{' + i + '}').join('(?:' + expandMacroElsewhere(i) + ')');
+
+                    // stop the brute-force expansion attempt when we done 'em all:
+                    if (s.indexOf('{') === -1) {
+                        break;
+                    }
+                }
+            }
+        }
+
+        return s;
+    }
+
+
     var m, i;
     
-    if (opts.debug) console.log('\n############## RAW macros: ', dict_macros);
+    if (opts.debug || 1) console.log('\n############## RAW macros: ', dict_macros);
 
     // first we create the part of the dictionary which is targeting the use of macros
     // *inside* `[...]` sets; once we have completed that half of the expansions work,
@@ -311,43 +910,125 @@ function prepareMacros(dict_macros, opts) {
         }
     }
     
-    if (opts.debug) console.log('\n############### expanded macros: ', macros);
+    if (opts.debug || 1) console.log('\n############### expanded macros: ', macros);
     
     return macros;
 }
 
+
+
 // expand macros in a regex; expands them recursively
 function expandMacros(src, macros) {
-    var i, m;
+    var expansion_count = 0;
 
-    // first process *all* the macros inside [...] set expressions:
-    if (src.indexOf('{[{') >= 0) {
-        for (i in macros) {
-            if (macros.hasOwnProperty(i)) {
-                m = macros[i];
+    // By the time we call this function `expandMacros` we MUST have expanded and cached all macros already!
+    // Hence things should be easy in there:
 
-                src = src.split('{[{' + i + '}]}').join(m.in_set);
+    function expandAllMacrosInSet(s) {
+        var i, m;
+
+        // process *all* the macros inside [...] set:
+        if (s.indexOf('{') >= 0) {
+            for (i in macros) {
+                if (macros.hasOwnProperty(i)) {
+                    m = macros[i];
+
+                    var x = m.in_set;
+
+                    if (x instanceof Error) {
+                        // this turns out to be an macro with 'issues' and it is used, so the 'issues' do matter: bombs away!
+                        throw x;
+                    }
+
+                    // detect definition loop:
+                    if (x === false) {
+                        throw new Error('Macro name "' + i + '" has an illegal, looping, definition, i.e. it\'s definition references itself, either directly or indirectly, via other macros.');
+                    }
+
+                    var a = s.split('{' + i + '}');
+                    if (a.length > 1) {
+                        s = a.join(x);
+                        expansion_count++;
+                    }
+                    console.log('attempt to expand in set: ', i, ' --> ', s, ' // ', a, ' // ', x);
+
+                    // stop the brute-force expansion attempt when we done 'em all:
+                    if (s.indexOf('{') === -1) {
+                        break;
+                    }
+                }
             }
         }
+
+        console.log('expandAllMacrosInSet output: ', s);
+
+        return s;
     }
 
-    // then process the remaining macro occurrences in the regex:
-    // every macro used in a lexer rule will become its own capture group. 
+    function expandAllMacrosElsewhere(s) {
+        var i, m;
+
+        // When we process the main macro occurrences in the regex
+        // every macro used in a lexer rule will become its own capture group.
+        // 
+        // Meanwhile the cached expansion will expand any submacros into
+        // *NON*-capturing groups so that the backreference indexes remain as you'ld
+        // expect and using macros doesn't require you to know exactly what your
+        // used macro will expand into, i.e. which and how many submacros it has.
+        // 
+        // This is a BREAKING CHANGE from vanilla jison 0.4.15! 
+        if (s.indexOf('{') >= 0) {
+            for (i in macros) {
+                if (macros.hasOwnProperty(i)) {
+                    m = macros[i];
+
+                    // These are all main macro expansions, hence CAPTURING grouping is applied:
+                    var x = m.elsewhere;
+
+                    // detect definition loop:
+                    if (x === false) {
+                        throw new Error('Macro name "' + i + '" has an illegal, looping, definition, i.e. it\'s definition references itself, either directly or indirectly, via other macros.');
+                    }
+
+                    var a = s.split('{' + i + '}');
+                    if (a.length > 1) {
+                        s = a.join('(' + x + ')');
+                        expansion_count++;
+                    }
+                    console.log('attempt to expand elsewhere: ', i, ' --> ', s, ' // ', a, ' // ', x);
+
+                    // stop the brute-force expansion attempt when we done 'em all:
+                    if (s.indexOf('{') === -1) {
+                        break;
+                    }
+                }
+            }
+        }
+
+        return s;
+    }
+
+
+    console.log("expandMacros input: ", src);
+
+    // When we process the macro occurrences in the regex
+    // every macro used in a lexer rule will become its own capture group.
+    // 
     // Meanwhile the cached expansion will have expanded any submacros into
     // *NON*-capturing groups so that the backreference indexes remain as you'ld
     // expect and using macros doesn't require you to know exactly what your
     // used macro will expand into, i.e. which and how many submacros it has.
     // 
     // This is a BREAKING CHANGE from vanilla jison 0.4.15! 
-    if (src.indexOf('{') >= 0) {
-        for (i in macros) {
-            if (macros.hasOwnProperty(i)) {
-                m = macros[i];
-
-                src = src.split('{' + i + '}').join('(' + m.elsewhere + ')');
-            }
-        }
+    var s2 = reduceRegex(src, null, expandAllMacrosInSet, expandAllMacrosElsewhere);
+    // only when we did expand some actual macros do we take the re-interpreted/optimized/regenerated regex from reduceRegex()
+    // in order to keep our test cases simple and rules recognizable. This assumes the user can code good regexes on his own,
+    // as long as no macros are involved...
+    if (expansion_count > 0) {
+        src = s2;
     }
+
+    console.log("expandMacros output: ", src, " -- count = ", expansion_count);
 
     return src;
 }
