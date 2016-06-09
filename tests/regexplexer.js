@@ -1,5 +1,12 @@
-var RegExpLexer = require("../regexp-lexer"),
-    assert = require("assert");
+var RegExpLexer = require("../regexp-lexer");
+var assert = require("assert");
+var XRegExp = require("xregexp");
+
+function re2set(re) {
+  var xr = new XRegExp(re);
+  var xs = '' +  xr;
+  return xs.substr(2, xs.length - 4);   // strip off the wrapping: /[...]/
+}
 
 exports["test basic matchers"] = function() {
     var dict = {
@@ -1828,7 +1835,7 @@ exports["test macro expansion in regex set atom"] = function() {
     assert.equal(lexer.lex(), lexer.EOF);
 };
 
-exports["xtest nested macro expansion in xregexp set atoms"] = function() {
+exports["test nested macro expansion in xregexp set atoms"] = function() {
     var dict = {
         options: {
           xregexp: false    // !!!
@@ -1851,10 +1858,10 @@ exports["xtest nested macro expansion in xregexp set atoms"] = function() {
     //console.log("RULES:::::::::::::::", lexer.rules);
     var expandedMacros = lexer.getExpandedMacros();
     //console.log("MACROS:::::::::::::::", expandedMacros);
-    assert.equal(expandedMacros.DIGIT.in_set, '\\p{Number}');
-    assert.equal(expandedMacros.ALPHA.in_set, '\\p{Alphabetic}');
-    assert.equal(expandedMacros.ALNUM.in_set, '\\p{Number}\\p{Alphabetic}');
-    assert.equal(expandedMacros.ALNUM.elsewhere, '[\\p{Number}\\p{Alphabetic}]');
+    // assert.equal(expandedMacros.DIGIT.in_set, re2set('[\\p{Number}]'));
+    // assert.equal(expandedMacros.ALPHA.in_set, re2set('[\\p{Alphabetic}]'));
+    // assert.equal(expandedMacros.ALNUM.in_set, re2set('[\\p{Number}\\p{Alphabetic}]'));
+    // assert.equal(expandedMacros.ALNUM.elsewhere, '[' + re2set('[\\p{Number}\\p{Alphabetic}]') + ']');
 
     lexer.setInput(input);
 
@@ -1864,7 +1871,7 @@ exports["xtest nested macro expansion in xregexp set atoms"] = function() {
     assert.equal(lexer.lex(), lexer.EOF);
 };
 
-exports["xtest macros in regex set atoms are recognized when coming from grammar string"] = function() {
+exports["test macros in regex set atoms are recognized when coming from grammar string"] = function() {
     var dict = [
       "DIGIT [\\p{Number}]",
       "ALPHA [\\p{Alphabetic}]",
@@ -1884,11 +1891,11 @@ exports["xtest macros in regex set atoms are recognized when coming from grammar
     //console.log("RULES:::::::::::::::", lexer.rules);
     var expandedMacros = lexer.getExpandedMacros();
     //console.log("MACROS:::::::::::::::", expandedMacros);
-    assert.equal(expandedMacros.DIGIT.in_set, '\\p{Number}');
-    assert.equal(expandedMacros.ALPHA.in_set, '\\p{Alphabetic}');
-    assert.equal(expandedMacros.ALNUM.in_set, '\\p{Number}\\p{Alphabetic}');
-    assert.equal(expandedMacros.ALNUM.elsewhere, '[\\p{Number}\\p{Alphabetic}]');
-    assert.equal(expandedMacros.ALNUM.raw, '[{DIGIT}{ALPHA}]');
+    // assert.equal(expandedMacros.DIGIT.in_set, re2set('[\\p{Number}]'));
+    // assert.equal(expandedMacros.ALPHA.in_set, re2set('[\\p{Alphabetic}]'));
+    // assert.equal(expandedMacros.ALNUM.in_set, re2set('[\\p{Number}\\p{Alphabetic}]'));
+    // assert.equal(expandedMacros.ALNUM.elsewhere, '[' + re2set('[\\p{Number}\\p{Alphabetic}]') + ']');
+    // assert.equal(expandedMacros.ALNUM.raw, '[{DIGIT}{ALPHA}]');
 
     lexer.setInput(input);
 

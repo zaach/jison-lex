@@ -1333,7 +1333,7 @@ function RegExpLexer(dict, input, tokens) {
                 '',
                 source,
                 'return lexer;'].join('\n');
-            console.log("===============================TEST CODE\n", testcode, "\n=====================END====================\n");
+            //console.log("===============================TEST CODE\n", testcode, "\n=====================END====================\n");
             var lexer_f = new Function('', testcode);
             var lexer = lexer_f();
 
