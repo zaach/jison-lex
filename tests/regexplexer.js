@@ -2000,6 +2000,7 @@ exports["test nested macro expansion in regex set atoms with negating inner set"
             "ALNUM": "[{DIGIT}{ALPHA}]|[{DIGIT}]",
             "CTRL":  "[^{ALNUM}]",
             "WORD":  "[BLUB:]|[^{CTRL}]",
+            // "WS":    "[^\\S\\r\\n]",
         },
         rules: [
             ["π", "return 'PI';" ],

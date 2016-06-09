@@ -131,9 +131,9 @@ function prepareRules(dict, actions, caseHelper, tokens, startConditions, opts) 
 }
 
 // 'Join' a regex set `[...]` into a Unicode range spanning logic array, flagging every character in the given set.
-function set2bitarray(bitarr, s, set_is_inverted) {
+function set2bitarray(bitarr, s) {
     var orig = s;
-    set_is_inverted = !!set_is_inverted;
+    var set_is_inverted = false;
     console.log('set2bitarray: ', { s: s, set_is_inverted: set_is_inverted });
     var apply = [];
 
@@ -228,6 +228,7 @@ function set2bitarray(bitarr, s, set_is_inverted) {
             set_is_inverted = !set_is_inverted;
             s = s.substr(1);
         }
+
         // BITARR collects flags for characters set. Inversion means the complement set of character is st instead.
         // This results in an OR operations when sets are joined/chained.
 
@@ -276,32 +277,33 @@ function set2bitarray(bitarr, s, set_is_inverted) {
                     switch (c1[1]) {
                     case 'S':
                         // [^ \f\n\r\t\v\u00a0\u1680\u180e\u2000-\u200a\u2028\u2029\u202f\u205f\u3000\ufeff]
-                        set2bitarray(bitarr, ' \f\n\r\t\v\u00a0\u1680\u180e\u2000-\u200a\u2028\u2029\u202f\u205f\u3000\ufeff', !set_is_inverted);
+                        set2bitarray(bitarr, '^ \f\n\r\t\v\u00a0\u1680\u180e\u2000-\u200a\u2028\u2029\u202f\u205f\u3000\ufeff');
+                        console.log('intermediate output: ', bitarray2set(bitarr));
                         continue;                    
 
                     case 's':
                         // [ \f\n\r\t\v\u00a0\u1680\u180e\u2000-\u200a\u2028\u2029\u202f\u205f\u3000\ufeff]
-                        set2bitarray(bitarr, ' \f\n\r\t\v\u00a0\u1680\u180e\u2000-\u200a\u2028\u2029\u202f\u205f\u3000\ufeff', set_is_inverted);
+                        set2bitarray(bitarr, ' \f\n\r\t\v\u00a0\u1680\u180e\u2000-\u200a\u2028\u2029\u202f\u205f\u3000\ufeff');
                         continue;                    
 
                     case 'D':
                         // [^0-9]
-                        set2bitarray(bitarr, '0-9', !set_is_inverted);
+                        set2bitarray(bitarr, '^0-9');
                         continue;                    
 
                     case 'd':
                         // [0-9]
-                        set2bitarray(bitarr, '0-9', set_is_inverted);
+                        set2bitarray(bitarr, '0-9');
                         continue;                    
 
                     case 'W':
                         // [^A-Za-z0-9_]
-                        set2bitarray(bitarr, 'A-Za-z0-9_', !set_is_inverted);
+                        set2bitarray(bitarr, '^A-Za-z0-9_');
                         continue;                    
 
                     case 'w':
                         // [A-Za-z0-9_]
-                        set2bitarray(bitarr, 'A-Za-z0-9_', set_is_inverted);
+                        set2bitarray(bitarr, 'A-Za-z0-9_');
                         continue;                    
                     }
                     continue;
@@ -398,6 +400,7 @@ function bitarray2set(l, output_inverted_variant) {
     var i;
     var j;
     if (output_inverted_variant) {
+        // generate the inverted set, hence all unmarked slots are part of the output range:
         i = 0;
         while (i <= 65535) {
             // find first character not in original set:
@@ -420,7 +423,7 @@ function bitarray2set(l, output_inverted_variant) {
             i = j;
         }
     } else {
-        // generate the inverted set, hence all logic checks are inverted here... 
+        // generate the non-inverted set, hence all logic checks are inverted here... 
         i = 0;
         while (i <= 65535) {
             // find first character not in original set:
@@ -446,8 +449,8 @@ function bitarray2set(l, output_inverted_variant) {
             i = j;
         }
     }
-    //console.log('end of find loop:', rv);
     var s = rv.join('');
+    console.log('end of find loop:', s, !!output_inverted_variant);
 
     return s;
 }
@@ -800,8 +803,6 @@ function normalizeSet(s, output_inverted_variant) {
         return s;
     }
 
-    output_inverted_variant = !output_inverted_variant;
-
     if (s && s.length) {
         // // inverted set?
         // if (s[0] === '^') {
@@ -813,10 +814,10 @@ function normalizeSet(s, output_inverted_variant) {
         var l = new Array(65536 + 3);
         set2bitarray(l, s);
 
-        s = bitarray2set(l, !output_inverted_variant);
+        s = bitarray2set(l, output_inverted_variant);
     }
 
-    //console.log('normalizeSet result: ', { re: s, inverted: output_inverted_variant });
+    console.log('normalizeSet result: ', { re: s, orig: orig, inverted: output_inverted_variant });
     return s;
 }
 
