@@ -131,14 +131,33 @@ function prepareRules(dict, actions, caseHelper, tokens, startConditions, opts) 
 }
 
 // 'Join' a regex set `[...]` into a Unicode range spanning logic array, flagging every character in the given set.
-function set2bitarray(arr2deep, s) {
+function set2bitarray(bitarr, s, set_is_inverted) {
     var orig = s;
-    var set_is_inverted = false;
+    set_is_inverted = !!set_is_inverted;
+    console.log('set2bitarray: ', { s: s, set_is_inverted: set_is_inverted });
+    var apply = [];
 
     function mark(d1, d2) {
         if (d2 == null) d2 = d1;
+        console.log("mark: ", d1, d2, set_is_inverted);
         for (var i = d1; i <= d2; i++) {
-            l[i] = true;
+            bitarr[i] = true;
+        }
+    }
+
+    function exec() {
+        apply.sort(function (a, b) {
+            return a[0] - b[0];
+        });           
+        // array gets sorted on entry [0] of each sub-array
+
+        console.log('exec: ', set_is_inverted);
+
+        // When we have marked all slots, '^' NEGATES the set, hence we flip all slots:
+        if (set_is_inverted) {
+            for (var i = 0; i < 65536; i++) {
+                bitarr[i] = !bitarr[i];
+            }
         }
     }
 
@@ -206,17 +225,13 @@ function set2bitarray(arr2deep, s) {
     if (s && s.length) {
         // inverted set?
         if (s[0] === '^') {
-            set_is_inverted = true;
+            set_is_inverted = !set_is_inverted;
             s = s.substr(1);
         }
-        // A[0] collects flags for non-inverted set, A[1] collects flags for inverted set; this is presumably faster
-        // than inverting the entire set just because we hit a '^' at the start of this set!
-        //
-        // A[2] flags if l[0] has been touched, A[3] ditto for A[1]
-        arr2deep[2 + set_is_inverted] = true;
-        var l = arr2deep[0 + set_is_inverted];
+        // BITARR collects flags for characters set. Inversion means the complement set of character is st instead.
+        // This results in an OR operations when sets are joined/chained.
 
-        //console.log('set2bitarray: ', { l: l, set_is_inverted: set_is_inverted });
+        //console.log('set2bitarray: ', { l: bitarr, set_is_inverted: set_is_inverted });
     
         var chr_re = /^(?:[^\\]|\\[^cxu0-9]|\\[0-9]{1,3}|\\c[A-Z]|\\x[0-9a-fA-F]{2}|\\u[0-9a-fA-F]{4}|\\u\{[0-9a-fA-F]\}{4})/;
         var xregexp_unicode_escape_re = /^\{[A-Za-z0-9 \-\._]+\}/;              // Matches the XRegExp Unicode escape braced part, e.g. `{Number}`
@@ -261,32 +276,32 @@ function set2bitarray(arr2deep, s) {
                     switch (c1[1]) {
                     case 'S':
                         // [^ \f\n\r\t\v\u00a0\u1680\u180e\u2000-\u200a\u2028\u2029\u202f\u205f\u3000\ufeff]
-                        set2bitarray(arr2deep, '^ \f\n\r\t\v\u00a0\u1680\u180e\u2000-\u200a\u2028\u2029\u202f\u205f\u3000\ufeff');
+                        set2bitarray(bitarr, ' \f\n\r\t\v\u00a0\u1680\u180e\u2000-\u200a\u2028\u2029\u202f\u205f\u3000\ufeff', !set_is_inverted);
                         continue;                    
 
                     case 's':
                         // [ \f\n\r\t\v\u00a0\u1680\u180e\u2000-\u200a\u2028\u2029\u202f\u205f\u3000\ufeff]
-                        set2bitarray(arr2deep, ' \f\n\r\t\v\u00a0\u1680\u180e\u2000-\u200a\u2028\u2029\u202f\u205f\u3000\ufeff');
+                        set2bitarray(bitarr, ' \f\n\r\t\v\u00a0\u1680\u180e\u2000-\u200a\u2028\u2029\u202f\u205f\u3000\ufeff', set_is_inverted);
                         continue;                    
 
                     case 'D':
                         // [^0-9]
-                        set2bitarray(arr2deep, '^0-9');
+                        set2bitarray(bitarr, '0-9', !set_is_inverted);
                         continue;                    
 
                     case 'd':
                         // [0-9]
-                        set2bitarray(arr2deep, '0-9');
+                        set2bitarray(bitarr, '0-9', set_is_inverted);
                         continue;                    
 
                     case 'W':
                         // [^A-Za-z0-9_]
-                        set2bitarray(arr2deep, '^A-Za-z0-9_');
+                        set2bitarray(bitarr, 'A-Za-z0-9_', !set_is_inverted);
                         continue;                    
 
                     case 'w':
                         // [A-Za-z0-9_]
-                        set2bitarray(arr2deep, 'A-Za-z0-9_');
+                        set2bitarray(bitarr, 'A-Za-z0-9_', set_is_inverted);
                         continue;                    
                     }
                     continue;
@@ -330,14 +345,16 @@ function set2bitarray(arr2deep, s) {
             }
             mark(v1);
         }
+
+        // Since a regex like `[^]` should match everything(?really?), we don't need to check if the MARK
+        // phase actually marked anything at all (apply.length > 0):
+        exec();
     }
 }
 
 
 // convert a simple bitarray back into a regex set `[...]` content:
 function bitarray2set(l, output_inverted_variant) {
-    l = l[0];
-
     function i2c(i) {
         var c;
 
@@ -441,18 +458,18 @@ function bitarray2set(l, output_inverted_variant) {
 function reduceRegexToSet(s, name) {
     var orig = s;
     
-    //console.log('REDUX: ', s);
+    console.log('REDUX: ', s);
 
     var chr_re = /^(?:[^\\]|\\[^cxu0-9]|\\[0-9]{1,3}|\\c[A-Z]|\\x[0-9a-fA-F]{2}|\\u[0-9a-fA-F]{4}|\\u\{[0-9a-fA-F]\}{4})/;
     var set_part_re = /^(?:[^\\\]]|\\[^cxu0-9]|\\[0-9]{1,3}|\\c[A-Z]|\\x[0-9a-fA-F]{2}|\\u[0-9a-fA-F]{4}|\\u\{[0-9a-fA-F]\}{4})+/;
     var nothing_special_re = /^(?:[^\\\[\]\(\)\|^]|\\[^cxu0-9]|\\[0-9]{1,3}|\\c[A-Z]|\\x[0-9a-fA-F]{2}|\\u[0-9a-fA-F]{4}|\\u\{[0-9a-fA-F]\}{4})+/;
 
-    var l = [new Array(65536 + 3), new Array(65536 + 3), false, false];
+    var l = new Array(65536 + 3);
     var internal_state = 0;
 
     while (s.length) {
         var c1 = s.match(chr_re);
-        //console.log('C1: ', c1);
+        console.log('C1: ', c1);
         if (!c1) {
             // cope with illegal escape sequences too!
             throw new Error('illegal escape sequence at start of regex part: "' + s + '" of regex "' + orig + '"');
@@ -564,20 +581,9 @@ function reduceRegexToSet(s, name) {
         }
     }
 
-    // now mix any negated set data into the non-negated bitarray:
-    if (l[3]) {
-        var a = l[0];
-        var b = l[1];
-        for (var i = 0; i < 65536; i++) {
-            if (!b[i]) {
-                a[i] = 1;
-            }
-        }
-    }
-
     s = bitarray2set(l);
 
-    //console.log("reduceRegexToSet result: ", s);
+    console.log("reduceRegexToSet result: ", s);
 
     // When this result is suitable for use in a set, than we should be able to compile 
     // it in a regex; that way we can easily validate whether macro X is fit to be used 
@@ -639,7 +645,7 @@ function reduceRegex(s, name, expandAllMacrosInSet_cb, expandAllMacrosElsewhere_
         case '[':
             // this is starting a set within the regex: scan until end of set!
             var set_content = [];
-            var l = [new Array(65536 + 3), new Array(65536 + 3), false, false];
+            var l = new Array(65536 + 3);
 
             while (s.length) {
                 var inner = s.match(set_part_re);
@@ -687,17 +693,6 @@ function reduceRegex(s, name, expandAllMacrosInSet_cb, expandAllMacrosElsewhere_
             //console.log('regex ex after expansion: ', se);
 
             set2bitarray(l, se);
-
-            // now mix any negated set data into the non-negated bitarray:
-            if (l[3]) {
-                var a = l[0];
-                var b = l[1];
-                for (var i = 0; i < 65536; i++) {
-                    if (!b[i]) {
-                        a[i] = 1;
-                    }
-                }
-            }
 
             // find out which set expression is optimal in size:
             var s1 = bitarray2set(l);
@@ -808,26 +803,15 @@ function normalizeSet(s, output_inverted_variant) {
     output_inverted_variant = !output_inverted_variant;
 
     if (s && s.length) {
-        // inverted set?
-        if (s[0] === '^') {
-            output_inverted_variant = !output_inverted_variant;
-            s = s.substr(1);
-        }
+        // // inverted set?
+        // if (s[0] === '^') {
+        //     output_inverted_variant = !output_inverted_variant;
+        //     s = s.substr(1);
+        // }
         //console.log('normalize: ', { s: s, inv: output_inverted_variant });
 
-        var l = [new Array(65536 + 3), new Array(65536 + 3), false, false];
+        var l = new Array(65536 + 3);
         set2bitarray(l, s);
-
-        // now mix any negated set data into the non-negated bitarray:
-        if (l[3]) {
-            var a = l[0];
-            var b = l[1];
-            for (var i = 0; i < 65536; i++) {
-                if (!b[i]) {
-                    a[i] = 1;
-                }
-            }
-        }
 
         s = bitarray2set(l, !output_inverted_variant);
     }
@@ -891,7 +875,7 @@ function prepareMacros(dict_macros, opts) {
             }
 
             macros[i] = {
-                in_set: normalizeSet(m),
+                in_set: normalizeSet(m, false),
                 in_inv_set: normalizeSet(m, true),
                 elsewhere: null,
                 raw: dict_macros[i]
