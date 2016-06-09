@@ -143,11 +143,63 @@ function set2bitarray(arr2deep, s) {
     }
 
     function eval_escaped_code(s) {
-        try {
-            return eval('"' + s.replace(/\"/g, '\\"') + '"');
-        } catch (ex) {
-            console.error("eval of '" + s + "' failed: ", ex);
-            throw ex;
+        // decode escaped code? If none, just take the character as-is
+        if (s.indexOf('\\') === 0) {
+            var l = s.substr(0, 2);
+            switch (l) {
+            case '\\c':
+                var c = s.charCodeAt(2) - 'A'.charCodeAt(0) + 1;
+                return String.fromCharCode(c);
+
+            case '\\x':
+                s = s.substr(2);
+                var c = parseInt(s, 16);
+                return String.fromCharCode(c);
+
+            case '\\u':
+                s = s.substr(2);
+                if (s[0] === '{') {
+                    s = s.substr(1, s.length - 2);
+                }
+                var c = parseInt(s, 16);
+                return String.fromCharCode(c);
+
+            case '\\0':
+            case '\\1':
+            case '\\2':
+            case '\\3':
+            case '\\4':
+            case '\\5':
+            case '\\6':
+            case '\\7':
+                s = s.substr(1);
+                var c = parseInt(s, 8);
+                return String.fromCharCode(c);
+
+            case '\\r':
+                return '\r';
+
+            case '\\n':
+                return '\n';
+
+            case '\\v':
+                return '\v';
+
+            case '\\f':
+                return '\f';
+
+            case '\\t':
+                return '\t';
+
+            case '\\r':
+                return '\r';
+
+            default:
+                // just the chracter itself:
+                return s.substr(1);
+            }
+        } else {
+            return s;
         }
     }
 
@@ -166,7 +218,7 @@ function set2bitarray(arr2deep, s) {
 
         //console.log('set2bitarray: ', { l: l, set_is_inverted: set_is_inverted });
     
-        var chr_re = /^(?:[^\\]|\\[^cxu0-9]|\\[0-9]{1,3}|\\c[A-Z]|\\x[0-9a-fA-F]{2}|\\u[0-9a-fA-F]{4})/;
+        var chr_re = /^(?:[^\\]|\\[^cxu0-9]|\\[0-9]{1,3}|\\c[A-Z]|\\x[0-9a-fA-F]{2}|\\u[0-9a-fA-F]{4}|\\u\{[0-9a-fA-F]\}{4})/;
         var xregexp_unicode_escape_re = /^\{[A-Za-z0-9 \-\._]+\}/;              // Matches the XRegExp Unicode escape braced part, e.g. `{Number}`
 
         while (s.length) {
@@ -179,7 +231,8 @@ function set2bitarray(arr2deep, s) {
                 // Quick hack for XRegExp escapes inside a regex `[...]` set definition: we *could* try to keep those
                 // intact but it's easier to unfold them here; this is not nice for when the grammar specifies explicit
                 // XRegExp support, but alas, we'll get there when we get there... ;-)
-                if (c1 === '\\p') {
+                switch (c1) {
+                case '\\p':
                     s = s.substr(c1.length);
                     var c2 = s.match(xregexp_unicode_escape_re);
                     if (c2) {
@@ -189,12 +242,59 @@ function set2bitarray(arr2deep, s) {
                         var xr = new XRegExp('[' + c1 + c2 + ']');           // TODO: case-insensitive grammar???
                         var xs = '' + xr;
                         // remove the wrapping `/[...]/`:
-                        console.log('expanding XRegExp escape: ', xr, ' --> ', xs);
+                        //console.log('expanding XRegExp escape: ', xr, ' --> ', xs);
                         xs = xs.substr(2, xs.length - 4);
                         // inject back into source string:
                         s = xs + s;
                         continue;
                     }
+                    break;
+
+                case '\\S':
+                case '\\s':
+                case '\\W':
+                case '\\w':
+                case '\\d':
+                case '\\D':
+                    // these can't participate in a range, but need to be treated special:
+                    s = s.substr(c1.length);
+                    switch (c1[1]) {
+                    case 'S':
+                        // [^ \f\n\r\t\v\u00a0\u1680\u180e\u2000-\u200a\u2028\u2029\u202f\u205f\u3000\ufeff]
+                        set2bitarray(arr2deep, '^ \f\n\r\t\v\u00a0\u1680\u180e\u2000-\u200a\u2028\u2029\u202f\u205f\u3000\ufeff');
+                        continue;                    
+
+                    case 's':
+                        // [ \f\n\r\t\v\u00a0\u1680\u180e\u2000-\u200a\u2028\u2029\u202f\u205f\u3000\ufeff]
+                        set2bitarray(arr2deep, ' \f\n\r\t\v\u00a0\u1680\u180e\u2000-\u200a\u2028\u2029\u202f\u205f\u3000\ufeff');
+                        continue;                    
+
+                    case 'D':
+                        // [^0-9]
+                        set2bitarray(arr2deep, '^0-9');
+                        continue;                    
+
+                    case 'd':
+                        // [0-9]
+                        set2bitarray(arr2deep, '0-9');
+                        continue;                    
+
+                    case 'W':
+                        // [^A-Za-z0-9_]
+                        set2bitarray(arr2deep, '^A-Za-z0-9_');
+                        continue;                    
+
+                    case 'w':
+                        // [A-Za-z0-9_]
+                        set2bitarray(arr2deep, 'A-Za-z0-9_');
+                        continue;                    
+                    }
+                    continue;
+
+                case '\\b':
+                    // matches a backspace: https://developer.mozilla.org/en/docs/Web/JavaScript/Guide/Regular_Expressions#special-backspace
+                    c1 = '\u0008';
+                    break;
                 }
             }
             var v1 = eval_escaped_code(c1);
@@ -241,11 +341,16 @@ function bitarray2set(l, output_inverted_variant) {
     function i2c(i) {
         var c;
 
-        if (i < 32 || i > 127) {
-            c = '0000' + i.toString(16);
-            return '\\u' + c.substr(c.length - 4);
-        }
         switch (i) {
+        case 10:
+            return '\\n';
+
+        case 13:
+            return '\\r';
+
+        case 9:
+            return '\\t';
+
         case 45:        // ASCII/Unicode for '-' dash
             return '\\-';
 
@@ -257,6 +362,10 @@ function bitarray2set(l, output_inverted_variant) {
 
         case 93:        // ']'
             return '\\]';
+        }
+        if (i < 32 || i > 127) {
+            c = '0000' + i.toString(16);
+            return '\\u' + c.substr(c.length - 4);
         }
         return String.fromCharCode(i);
     }
@@ -332,11 +441,11 @@ function bitarray2set(l, output_inverted_variant) {
 function reduceRegexToSet(s, name) {
     var orig = s;
     
-    console.log('REDUX: ', s);
+    //console.log('REDUX: ', s);
 
-    var chr_re = /^(?:[^\\]|\\[^cxu0-9]|\\[0-9]{1,3}|\\c[A-Z]|\\x[0-9a-fA-F]{2}|\\u[0-9a-fA-F]{4})/;
-    var set_part_re = /^(?:[^\\\]]|\\[^cxu0-9]|\\[0-9]{1,3}|\\c[A-Z]|\\x[0-9a-fA-F]{2}|\\u[0-9a-fA-F]{4})+/;
-    var nothing_special_re = /^(?:[^\\\[\]\(\)\|^]|\\[^cxu0-9]|\\[0-9]{1,3}|\\c[A-Z]|\\x[0-9a-fA-F]{2}|\\u[0-9a-fA-F]{4})+/;
+    var chr_re = /^(?:[^\\]|\\[^cxu0-9]|\\[0-9]{1,3}|\\c[A-Z]|\\x[0-9a-fA-F]{2}|\\u[0-9a-fA-F]{4}|\\u\{[0-9a-fA-F]\}{4})/;
+    var set_part_re = /^(?:[^\\\]]|\\[^cxu0-9]|\\[0-9]{1,3}|\\c[A-Z]|\\x[0-9a-fA-F]{2}|\\u[0-9a-fA-F]{4}|\\u\{[0-9a-fA-F]\}{4})+/;
+    var nothing_special_re = /^(?:[^\\\[\]\(\)\|^]|\\[^cxu0-9]|\\[0-9]{1,3}|\\c[A-Z]|\\x[0-9a-fA-F]{2}|\\u[0-9a-fA-F]{4}|\\u\{[0-9a-fA-F]\}{4})+/;
 
     var l = [new Array(65536 + 3), new Array(65536 + 3), false, false];
     var internal_state = 0;
@@ -380,7 +489,7 @@ function reduceRegexToSet(s, name) {
             var c2 = s.match(chr_re);
             if (!c2) {
                 // cope with illegal escape sequences too!
-                console.log(set_content);
+                //console.log(set_content);
                 throw new Error('regex set expression is broken in regex: "' + orig + '" --> "' + s + '"');
             } else {
                 c2 = c2[0];
@@ -426,7 +535,7 @@ function reduceRegexToSet(s, name) {
             s = s.replace(/^\((?:\?:)?(.*?)\)$/, '$1');         // (?:...) -> ...  and  (...) -> ...
             s = s.replace(/^\^?(.*?)\$?$/, '$1');               // ^...$ --> ...  (catch these both inside and outside the outer grouping, hence do the ungrouping twice: one before, once after this)
             s = s.replace(/^\((?:\?:)?(.*?)\)$/, '$1');         // (?:...) -> ...  and  (...) -> ...
-            console.log('REDUX B: ', s);
+            //console.log('REDUX B: ', s);
 
             throw new Error('[macro [' + name + '] is unsuitable for use inside regex set expressions: "[' + orig + ']"]'); 
 
@@ -468,7 +577,7 @@ function reduceRegexToSet(s, name) {
 
     s = bitarray2set(l);
 
-    console.log("reduceRegexToSet result: ", s);
+    //console.log("reduceRegexToSet result: ", s);
 
     // When this result is suitable for use in a set, than we should be able to compile 
     // it in a regex; that way we can easily validate whether macro X is fit to be used 
@@ -506,11 +615,11 @@ function reduceRegex(s, name, expandAllMacrosInSet_cb, expandAllMacrosElsewhere_
         }
     }
 
-    console.log('REDUX ELSEWHERE: ', s);
+    //console.log('REDUX ELSEWHERE: ', s);
 
-    var chr_re = /^(?:[^\\]|\\[^cxu0-9]|\\[0-9]{1,3}|\\c[A-Z]|\\x[0-9a-fA-F]{2}|\\u[0-9a-fA-F]{4})/;
-    var set_part_re = /^(?:[^\\\]]|\\[^cxu0-9]|\\[0-9]{1,3}|\\c[A-Z]|\\x[0-9a-fA-F]{2}|\\u[0-9a-fA-F]{4})+/;
-    var nothing_special_re = /^(?:[^\\\[\]\(\)\|^\{\}]|\\[^cxu0-9]|\\[0-9]{1,3}|\\c[A-Z]|\\x[0-9a-fA-F]{2}|\\u[0-9a-fA-F]{4})+/;
+    var chr_re = /^(?:[^\\]|\\[^cxu0-9]|\\[0-9]{1,3}|\\c[A-Z]|\\x[0-9a-fA-F]{2}|\\u[0-9a-fA-F]{4}|\\u\{[0-9a-fA-F]\}{4})/;
+    var set_part_re = /^(?:[^\\\]]|\\[^cxu0-9]|\\[0-9]{1,3}|\\c[A-Z]|\\x[0-9a-fA-F]{2}|\\u[0-9a-fA-F]{4}|\\u\{[0-9a-fA-F]\}{4})+/;
+    var nothing_special_re = /^(?:[^\\\[\]\(\)\|^\{\}]|\\[^cxu0-9]|\\[0-9]{1,3}|\\c[A-Z]|\\x[0-9a-fA-F]{2}|\\u[0-9a-fA-F]{4}|\\u\{[0-9a-fA-F]\}{4})+/;
     var xregexp_unicode_escape_re = /^\{[A-Za-z0-9 \-\._]+\}/;              // Matches the XRegExp Unicode escape braced part, e.g. `{Number}`
 
     var rv = [];
@@ -556,7 +665,7 @@ function reduceRegex(s, name, expandAllMacrosInSet_cb, expandAllMacrosElsewhere_
             var c2 = s.match(chr_re);
             if (!c2) {
                 // cope with illegal escape sequences too!
-                console.log(set_content);
+                //console.log(set_content);
                 throw new Error(errinfo() + ': regex set expression is broken: "' + s + '"');
             } else {
                 c2 = c2[0];
@@ -568,14 +677,14 @@ function reduceRegex(s, name, expandAllMacrosInSet_cb, expandAllMacrosElsewhere_
 
             var se = set_content.join('');
 
-            console.log('regex ex before expansion: ', se);
+            //console.log('regex ex before expansion: ', se);
 
             // expand any macros in here:
             if (expandAllMacrosInSet_cb) {
                 se = expandAllMacrosInSet_cb(se);
             }
 
-            console.log('regex ex after expansion: ', se);
+            //console.log('regex ex after expansion: ', se);
 
             set2bitarray(l, se);
 
@@ -666,7 +775,7 @@ function reduceRegex(s, name, expandAllMacrosInSet_cb, expandAllMacrosElsewhere_
         }
     }
 
-    console.log("reduceRegex result: ", rv);
+    //console.log("reduceRegex result: ", rv);
 
     s = rv.join('');
     
@@ -704,7 +813,7 @@ function normalizeSet(s, output_inverted_variant) {
             output_inverted_variant = !output_inverted_variant;
             s = s.substr(1);
         }
-        console.log('normalize: ', { s: s, inv: output_inverted_variant });
+        //console.log('normalize: ', { s: s, inv: output_inverted_variant });
 
         var l = [new Array(65536 + 3), new Array(65536 + 3), false, false];
         set2bitarray(l, s);
@@ -723,7 +832,7 @@ function normalizeSet(s, output_inverted_variant) {
         s = bitarray2set(l, !output_inverted_variant);
     }
 
-    console.log('normalizeSet result: ', { re: s, inverted: output_inverted_variant });
+    //console.log('normalizeSet result: ', { re: s, inverted: output_inverted_variant });
     return s;
 }
 
@@ -792,7 +901,7 @@ function prepareMacros(dict_macros, opts) {
 
             if (m instanceof Error) {
                 // this turns out to be an macro with 'issues' and it is used, so the 'issues' do matter: bombs away!
-                throw m;
+                throw new Error(m.message);
             }
 
             // detect definition loop:
@@ -827,13 +936,13 @@ function prepareMacros(dict_macros, opts) {
             }
         }
 
-        console.log("expandMacroElsewhere result: ", m);
+        //console.log("expandMacroElsewhere result: ", m);
 
         return m;
     }
 
     function expandAllMacrosInSet(s) {
-        var i, m;
+        var i, m, x;
 
         // process *all* the macros inside [...] set:
         if (s.indexOf('{') >= 0) {
@@ -841,9 +950,12 @@ function prepareMacros(dict_macros, opts) {
                 if (macros.hasOwnProperty(i)) {
                     m = macros[i];
 
-                    var x = expandMacroInSet(i);
-                    s = s.split('{' + i + '}').join(x);
-                    console.log('attempt to expand in set: ', i, ' --> ', s, ' // ', x);
+                    var a = s.split('{' + i + '}');
+                    if (a.length > 1) {
+                        x = expandMacroInSet(i);
+                        s = a.join(x);
+                    }
+                    //console.log('attempt to expand in set: ', i, ' --> ', s, ' // ', x);
 
                     // stop the brute-force expansion attempt when we done 'em all:
                     if (s.indexOf('{') === -1) {
@@ -857,7 +969,7 @@ function prepareMacros(dict_macros, opts) {
     }
 
     function expandAllMacrosElsewhere(s) {
-        var i, m;
+        var i, m, x;
 
         // When we process the remaining macro occurrences in the regex
         // every macro used in a lexer rule will become its own capture group.
@@ -874,7 +986,11 @@ function prepareMacros(dict_macros, opts) {
                     m = macros[i];
 
                     // These are all submacro expansions, hence non-capturing grouping is applied:
-                    s = s.split('{' + i + '}').join('(?:' + expandMacroElsewhere(i) + ')');
+                    var a = s.split('{' + i + '}');
+                    if (a.length > 1) {
+                        x = expandMacroElsewhere(i);
+                        s = a.join('(?:' + x + ')');
+                    }
 
                     // stop the brute-force expansion attempt when we done 'em all:
                     if (s.indexOf('{') === -1) {
@@ -925,7 +1041,7 @@ function expandMacros(src, macros) {
     // Hence things should be easy in there:
 
     function expandAllMacrosInSet(s) {
-        var i, m;
+        var i, m, x;
 
         // process *all* the macros inside [...] set:
         if (s.indexOf('{') >= 0) {
@@ -933,24 +1049,24 @@ function expandMacros(src, macros) {
                 if (macros.hasOwnProperty(i)) {
                     m = macros[i];
 
-                    var x = m.in_set;
-
-                    if (x instanceof Error) {
-                        // this turns out to be an macro with 'issues' and it is used, so the 'issues' do matter: bombs away!
-                        throw x;
-                    }
-
-                    // detect definition loop:
-                    if (x === false) {
-                        throw new Error('Macro name "' + i + '" has an illegal, looping, definition, i.e. it\'s definition references itself, either directly or indirectly, via other macros.');
-                    }
-
                     var a = s.split('{' + i + '}');
                     if (a.length > 1) {
+                        var x = m.in_set;
+
+                        if (x instanceof Error) {
+                            // this turns out to be an macro with 'issues' and it is used, so the 'issues' do matter: bombs away!
+                            throw x;
+                        }
+
+                        // detect definition loop:
+                        if (x === false) {
+                            throw new Error('Macro name "' + i + '" has an illegal, looping, definition, i.e. it\'s definition references itself, either directly or indirectly, via other macros.');
+                        }
+
                         s = a.join(x);
                         expansion_count++;
                     }
-                    console.log('attempt to expand in set: ', i, ' --> ', s, ' // ', a, ' // ', x);
+                    //console.log('attempt to expand in set: ', i, ' --> ', s, ' // ', a, ' // ', x);
 
                     // stop the brute-force expansion attempt when we done 'em all:
                     if (s.indexOf('{') === -1) {
@@ -960,13 +1076,13 @@ function expandMacros(src, macros) {
             }
         }
 
-        console.log('expandAllMacrosInSet output: ', s);
+        //console.log('expandAllMacrosInSet output: ', s);
 
         return s;
     }
 
     function expandAllMacrosElsewhere(s) {
-        var i, m;
+        var i, m, x;
 
         // When we process the main macro occurrences in the regex
         // every macro used in a lexer rule will become its own capture group.
@@ -982,20 +1098,20 @@ function expandMacros(src, macros) {
                 if (macros.hasOwnProperty(i)) {
                     m = macros[i];
 
-                    // These are all main macro expansions, hence CAPTURING grouping is applied:
-                    var x = m.elsewhere;
-
-                    // detect definition loop:
-                    if (x === false) {
-                        throw new Error('Macro name "' + i + '" has an illegal, looping, definition, i.e. it\'s definition references itself, either directly or indirectly, via other macros.');
-                    }
-
                     var a = s.split('{' + i + '}');
                     if (a.length > 1) {
+                        // These are all main macro expansions, hence CAPTURING grouping is applied:
+                        x = m.elsewhere;
+
+                        // detect definition loop:
+                        if (x === false) {
+                            throw new Error('Macro name "' + i + '" has an illegal, looping, definition, i.e. it\'s definition references itself, either directly or indirectly, via other macros.');
+                        }
+
                         s = a.join('(' + x + ')');
                         expansion_count++;
                     }
-                    console.log('attempt to expand elsewhere: ', i, ' --> ', s, ' // ', a, ' // ', x);
+                    //console.log('attempt to expand elsewhere: ', i, ' --> ', s, ' // ', a, ' // ', x);
 
                     // stop the brute-force expansion attempt when we done 'em all:
                     if (s.indexOf('{') === -1) {
@@ -1009,7 +1125,7 @@ function expandMacros(src, macros) {
     }
 
 
-    console.log("expandMacros input: ", src);
+    //console.log("expandMacros input: ", src);
 
     // When we process the macro occurrences in the regex
     // every macro used in a lexer rule will become its own capture group.
@@ -1028,7 +1144,7 @@ function expandMacros(src, macros) {
         src = s2;
     }
 
-    console.log("expandMacros output: ", src, " -- count = ", expansion_count);
+    //console.log("expandMacros output: ", src, " -- count = ", expansion_count);
 
     return src;
 }
@@ -1217,7 +1333,7 @@ function RegExpLexer(dict, input, tokens) {
                 '',
                 source,
                 'return lexer;'].join('\n');
-            //console.log("===============================TEST CODE\n", testcode, "\n=====================END====================\n");
+            console.log("===============================TEST CODE\n", testcode, "\n=====================END====================\n");
             var lexer_f = new Function('', testcode);
             var lexer = lexer_f();
 
@@ -1318,6 +1434,7 @@ function RegExpLexer(dict, input, tokens) {
                 }
             }
         }
+
         throw ex;
     });
 
