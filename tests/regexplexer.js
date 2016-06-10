@@ -1858,10 +1858,10 @@ exports["test nested macro expansion in xregexp set atoms"] = function() {
     //console.log("RULES:::::::::::::::", lexer.rules);
     var expandedMacros = lexer.getExpandedMacros();
     //console.log("MACROS:::::::::::::::", expandedMacros);
-    // assert.equal(expandedMacros.DIGIT.in_set, re2set('[\\p{Number}]'));
-    // assert.equal(expandedMacros.ALPHA.in_set, re2set('[\\p{Alphabetic}]'));
-    // assert.equal(expandedMacros.ALNUM.in_set, re2set('[\\p{Number}\\p{Alphabetic}]'));
-    // assert.equal(expandedMacros.ALNUM.elsewhere, '[' + re2set('[\\p{Number}\\p{Alphabetic}]') + ']');
+    assert.equal(expandedMacros.DIGIT.in_set, re2set('[\\p{Number}]'));
+    assert.equal(expandedMacros.ALPHA.in_set, re2set('[\\p{Alphabetic}]'));
+    assert.equal(expandedMacros.ALNUM.in_set, re2set('[\\p{Number}\\p{Alphabetic}]'));
+    assert.equal(expandedMacros.ALNUM.elsewhere, '[' + re2set('[\\p{Number}\\p{Alphabetic}]') + ']');
 
     lexer.setInput(input);
 
@@ -1891,11 +1891,11 @@ exports["test macros in regex set atoms are recognized when coming from grammar 
     //console.log("RULES:::::::::::::::", lexer.rules);
     var expandedMacros = lexer.getExpandedMacros();
     //console.log("MACROS:::::::::::::::", expandedMacros);
-    // assert.equal(expandedMacros.DIGIT.in_set, re2set('[\\p{Number}]'));
-    // assert.equal(expandedMacros.ALPHA.in_set, re2set('[\\p{Alphabetic}]'));
-    // assert.equal(expandedMacros.ALNUM.in_set, re2set('[\\p{Number}\\p{Alphabetic}]'));
-    // assert.equal(expandedMacros.ALNUM.elsewhere, '[' + re2set('[\\p{Number}\\p{Alphabetic}]') + ']');
-    // assert.equal(expandedMacros.ALNUM.raw, '[{DIGIT}{ALPHA}]');
+    assert.equal(expandedMacros.DIGIT.in_set, re2set('[\\p{Number}]'));
+    assert.equal(expandedMacros.ALPHA.in_set, re2set('[\\p{Alphabetic}]'));
+    assert.equal(expandedMacros.ALNUM.in_set, re2set('[\\p{Number}\\p{Alphabetic}]'));
+    assert.equal(expandedMacros.ALNUM.elsewhere, '[' + re2set('[\\p{Number}\\p{Alphabetic}]') + ']');
+    assert.equal(expandedMacros.ALNUM.raw, '[{DIGIT}{ALPHA}]');
 
     lexer.setInput(input);
 
