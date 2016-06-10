@@ -77,7 +77,7 @@ function prepareRules(dict, actions, caseHelper, tokens, startConditions, opts) 
 
         m = rules[i][0];
         if (typeof m === 'string') {
-            m = expandMacros(m, macros);
+            m = expandMacros(m, macros, opts);
             m = new XRegExp('^(?:' + m + ')', opts.options.caseInsensitive ? 'i' : '');
         }
         newRules.push(m);
@@ -370,6 +370,15 @@ function bitarray2set(l, output_inverted_variant) {
         case 9:
             return '\\t';
 
+        case 8:
+            return '\\b';
+
+        case 12:
+            return '\\f';
+
+        case 11:
+            return '\\v';
+
         case 45:        // ASCII/Unicode for '-' dash
             return '\\-';
 
@@ -381,8 +390,15 @@ function bitarray2set(l, output_inverted_variant) {
 
         case 93:        // ']'
             return '\\]';
+
+        case 94:        // ']'
+            return '\\^';
         }
-        if (i < 32 || i > 127) {
+        // Check and warn user about Unicode Supplementary Plane content as that will be FRIED!
+        if (i >= 0xD800 && i < 0xDFFF) {
+            throw new Error("You have Unicode Supplementary Plane content in a regex set: JavaScript has severe problems with Supplementary Plane content, particularly in regexes, so you are kindly required to get rid of this stuff. Sorry! (Offending UCS-2 code which triggered this: 0x" + i.toString(16) + ")");
+        }
+        if (i < 32 || i > 0xFFF0 /* Unicode Specials, also in UTF16 */ || (i >= 0xD800 && i < 0xDFFF) /* Unicode Supplementary Planes; we're TOAST in JavaScript as we're NOT UTF-16 but UCS-2! */) {
             c = '0000' + i.toString(16);
             return '\\u' + c.substr(c.length - 4);
         }
@@ -397,8 +413,8 @@ function bitarray2set(l, output_inverted_variant) {
     l[65536] = 1;
     // now reconstruct the regex set:
     var rv = [];
-    var i;
-    var j;
+    var i, j;
+    var entire_range_is_marked = false;
     if (output_inverted_variant) {
         // generate the inverted set, hence all unmarked slots are part of the output range:
         i = 0;
@@ -418,6 +434,7 @@ function bitarray2set(l, output_inverted_variant) {
             //console.log('found inv range:', i, j - 1);
             rv.push(i2c(i));
             if (j - 1 > i) {
+                entire_range_is_marked = (i === 0 && j === 65536);
                 rv.push((j - 2 > i ? '-' : '') + i2c(j - 1));
             }
             i = j;
@@ -444,13 +461,27 @@ function bitarray2set(l, output_inverted_variant) {
             //console.log('found inv range:', i, j - 1);
             rv.push(i2c(i));
             if (j - 1 > i) {
+                entire_range_is_marked = (i === 0 && j === 65536);
                 rv.push((j - 2 > i ? '-' : '') + i2c(j - 1));
             }
             i = j;
         }
     }
-    var s = rv.join('');
-    console.log('end of find loop:', s, !!output_inverted_variant);
+
+    // When there's nothing in the output we output a special 'match-nothing' regex: `[^\S\s]`.
+    // When we find the entire Unicode range is in the output match set, we also replace this with 
+    // a shorthand regex: `[\S\s]` (thus replacing the `[\u0000-\uffff]` regex we generated here).
+    var s;
+    if (!rv.length) {
+        // entire range turnes out to be EXCLUDED: 
+        s = '^\\S\\s';
+    } else if (entire_range_is_marked) {
+        // entire range turnes out to be INCLUDED: 
+        s = '\\S\\s';
+    } else {
+        s = rv.join('');
+    }
+    console.log('end of find loop:', s, rv.length, !!output_inverted_variant);
 
     return s;
 }
@@ -613,8 +644,10 @@ function reduceRegexToSet(s, name) {
 
 // expand all macros (with maybe one exception) in the given regex: the macros may exist inside `[...]` regex sets or 
 // elsewhere, which requires two different treatments to expand these macros.
-function reduceRegex(s, name, expandAllMacrosInSet_cb, expandAllMacrosElsewhere_cb) {
+function reduceRegex(s, name, opts, expandAllMacrosInSet_cb, expandAllMacrosElsewhere_cb) {
     var orig = s;
+    var regex_simple_size = 0;
+    var regex_previous_alts_simple_size = 0;
 
     function errinfo() {
         if (name) {
@@ -699,9 +732,22 @@ function reduceRegex(s, name, expandAllMacrosInSet_cb, expandAllMacrosElsewhere_
 
             // find out which set expression is optimal in size:
             var s1 = bitarray2set(l);
-            var s2 = '^' + bitarray2set(l, true);
+            var s2 = /* '^' + */ bitarray2set(l, true);
+            if (s2[0] === '^') {
+                s2 = s2.substr(1);
+            } else {
+                s2 = '^' + s2;
+            }
+            // check if the source regex set potentially has any expansions (guestimate!)
+            //
+            // The indexOf('{') picks both XRegExp Unicode escapes and JISON lexer macros, which is perfect for us here.
+            var has_expansions = (se.indexOf('{') >= 0);
+            console.log("regex sets: pick shortest one: ", { orig: se, s1: s1, s2: s2, has_expansions: has_expansions, choice: [se.length, s1.length, s2.length] });
             if (s2.length < s1.length) {
                 s1 = s2;
+            }
+            if (!has_expansions && se.length < s1.length) {
+                s1 = se;
             }
             rv.push('[' + s1 + ']');
             break;
@@ -720,7 +766,6 @@ function reduceRegex(s, name, expandAllMacrosInSet_cb, expandAllMacrosElsewhere_
                 rv.push(c1);
             }
             break;
-
 
         // Either a range expression or the start of a macro reference: `.{1,3}` or `{NAME}`.
         // Treat it as a macro reference and see if it will expand to enything:
@@ -909,7 +954,7 @@ function prepareMacros(dict_macros, opts) {
 
             // the macro MAY contain other macros which MAY be inside a `[...]` set in this
             // macro or elsewhere, hence we must parse the regex:
-            m = reduceRegex(m, i, expandAllMacrosInSet, expandAllMacrosElsewhere);
+            m = reduceRegex(m, i, opts, expandAllMacrosInSet, expandAllMacrosElsewhere);
 
             macros[i].elsewhere = m;
         } else {
@@ -1019,7 +1064,7 @@ function prepareMacros(dict_macros, opts) {
 
 
 // expand macros in a regex; expands them recursively
-function expandMacros(src, macros) {
+function expandMacros(src, macros, opts) {
     var expansion_count = 0;
 
     // By the time we call this function `expandMacros` we MUST have expanded and cached all macros already!
@@ -1121,12 +1166,22 @@ function expandMacros(src, macros) {
     // used macro will expand into, i.e. which and how many submacros it has.
     // 
     // This is a BREAKING CHANGE from vanilla jison 0.4.15! 
-    var s2 = reduceRegex(src, null, expandAllMacrosInSet, expandAllMacrosElsewhere);
+    var s2 = reduceRegex(src, null, opts, expandAllMacrosInSet, expandAllMacrosElsewhere);
     // only when we did expand some actual macros do we take the re-interpreted/optimized/regenerated regex from reduceRegex()
     // in order to keep our test cases simple and rules recognizable. This assumes the user can code good regexes on his own,
     // as long as no macros are involved...
-    if (expansion_count > 0) {
+    //
+    // Also pick the reduced regex when there (potentially) are XRegExp extensions in the original, e.g. `\\p{Number}`,
+    // unless the `xregexp` output option has been enabled.
+    if (expansion_count > 0 || (src.indexOf('\\p{') >= 0 && !opts.options.xregexp)) {
+        console.log("expandMacros S2 output: ", { src: src, s2: s2, expansion_count: expansion_count, xregexp_ON: !!opts.options.xregexp, has_xregexp_escapes: src.indexOf('\\p{') >= 0 });
         src = s2;
+    } else {
+        // Check if the reduced regex is smaller in size; when it is, we still go with the new one!
+        console.log('check if reduced regex is smaller: ', { src: src, new: s2, choice: s2.length < src.length });
+        if (s2.length < src.length) {
+            src = s2;
+        }
     }
 
     //console.log("expandMacros output: ", src, " -- count = ", expansion_count);

@@ -2000,7 +2000,9 @@ exports["test nested macro expansion in regex set atoms with negating inner set"
             "ALNUM": "[{DIGIT}{ALPHA}]|[{DIGIT}]",
             "CTRL":  "[^{ALNUM}]",
             "WORD":  "[BLUB:]|[^{CTRL}]",
-            // "WS":    "[^\\S\\r\\n]",
+            "WS":    "[^\\S\\r\\n]",
+            "ANY":   "[^\\W\\w]",
+            "ANY2":   "[\\W\\w]",
         },
         rules: [
             ["π", "return 'PI';" ],
@@ -2023,6 +2025,12 @@ exports["test nested macro expansion in regex set atoms with negating inner set"
     assert.equal(expandedMacros.ALNUM.elsewhere, '[0-9A-Za-z]|[0-9]');
     assert.equal(expandedMacros.CTRL.in_set, '\\u0000-/:-@\\[-`{-\\uffff' /* '^0-9a-zA-Z' */ );
     assert.equal(expandedMacros.CTRL.elsewhere, '[^0-9A-Za-z]');
+    assert.equal(expandedMacros.WS.in_set, '\\t\\v\\f \\u00a0\\u1680\\u180e\\u2000-\\u200a\\u2028\\u2029\\u202f\\u205f\\u3000\\ufeff');
+    assert.equal(expandedMacros.WS.elsewhere, '[^\\S\\r\\n]');
+    assert.equal(expandedMacros.ANY.in_set, '^\\S\\s');
+    assert.equal(expandedMacros.ANY.elsewhere, '[^\\S\\s]');
+    assert.equal(expandedMacros.ANY2.in_set, '\\S\\s');
+    assert.equal(expandedMacros.ANY2.elsewhere, '[\\S\\s]');
 
     lexer.setInput(input);
 
