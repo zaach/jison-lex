@@ -1,10 +1,28 @@
 # jison-lex
+
 A lexical analyzer generator used by [jison](http://jison.org). It takes a lexical grammar definition (either in JSON or Bison's lexical grammar format) and outputs a JavaScript lexer.
 
+
 ## install
-npm install jison-lex -g
+
+npm install jison-lex
+
+
+## build
+
+To build the lexer generator yourself, clone the git repo then run:
+
+    make prep
+    
+to install required packages and then run:
+
+    make
+    
+to run the unit tests.
+
 
 ## usage
+
 ```
 Usage: jison-lex [file] [options]
 
@@ -16,7 +34,8 @@ Options:
    --version                     print version and exit
 ```
 
-## programatic usage
+
+## programmatic usage
 
 ```
 var JisonLex = require('jison-lex');
@@ -43,5 +62,7 @@ lexer.lex();
 lexer.lex();
 // => 'Y'
 
+
 ## license
+
 MIT
