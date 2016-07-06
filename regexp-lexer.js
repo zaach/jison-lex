@@ -1772,7 +1772,6 @@ var __objdef__ = {
             clear.call(this);
         }
         var rules = this.__currentRuleSet__;
-        console.warn('rulesets: ', rules, this._currentRules());
         if (!rules) {
             // Update the ruleset cache as we apparently encountered a state change or just started lexing.
             // The cache is set up for fast lookup -- we assume a lexer will switch states much less often than it will
@@ -1780,7 +1779,6 @@ var __objdef__ = {
             // speed up those activities a tiny bit.
             rules = this.__currentRuleSet__ = this._currentRules();
         }
-        console.warn('rulesets 2: ', rules, this._currentRules(), len = rules.length);
         for (var i = 0, len = rules.length; i < len; i++) {
             tempMatch = this._input.match(this.rules[rules[i]]);
             if (tempMatch && (!match || tempMatch[0].length > match[0].length)) {
