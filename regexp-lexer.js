@@ -1480,7 +1480,10 @@ function RegExpLexer(dict, input, tokens) {
     return lexer;
 }
 
-RegExpLexer.prototype = {
+// As a function can be reproduced in source-code form by any JavaScript engine, we're going to wrap this chunk
+// of code in a function so that we can easily get it including it comments, etc.:
+function getRegExpLexerPrototype() {
+var __objdef__ = {
     EOF: 1,
     ERROR: 2,
 
@@ -1895,7 +1898,10 @@ RegExpLexer.prototype = {
         return this.conditionStack.length;
     }
 };
+    return __objdef__;
+}
 
+RegExpLexer.prototype = getRegExpLexerPrototype();
 
 // Convert dashed option keys to Camel Case, e.g. `camelCase('camels-have-one-hump')` => `'camelsHaveOneHump'` 
 function camelCase(s) {
@@ -1997,27 +2003,6 @@ function generateRegexesInitTableCode(opt) {
 }
 
 function generateModuleBody(opt) {
-    var functionDescriptions = {
-        setInput: 'resets the lexer, sets new input',
-        input: 'consumes and returns one char from the input',
-        unput: 'unshifts one char (or a string) into the input',
-        more: 'When called from action, caches matched text and appends it on next action',
-        reject: 'When called from action, signals the lexer that this rule fails to match the input, so the next matching rule (regex) should be tested instead.',
-        less: 'retain first n characters of the match',
-        pastInput: 'return (part of the) already matched input, i.e. for error messages',
-        upcomingInput: 'return (part of the) upcoming input, i.e. for error messages',
-        showPosition: 'return a string which displays the character position where the lexing error occurred, i.e. for error messages',
-        test_match: 'test the lexed token: return FALSE when not a match, otherwise return token',
-        next: 'return next match in input',
-        lex: 'return next match that has a token',
-        begin: 'backwards compatible alias for `pushState()`; the latter is symmetrical with `popState()` and we advise to use those APIs in any modern lexer code, rather than `begin()`.',
-        pushState: 'activates a new lexer condition state (pushes the new lexer condition state onto the condition stack)',
-        popState: 'pop the previously active lexer condition state off the condition stack',
-        topState: 'return the currently active lexer condition state; when an index argument is provided it produces the N-th previous condition state, if available',
-        _currentRules: '(internal) produce the lexer rule set which is active for the currently active lexer condition state',
-        stateStackSize: 'return the number of states currently on the stack'
-    };
-
     // make the JSON output look more like JavaScript:
     function cleanupJSON(str) {
         str = str.replace(/  "rules": \[/g, '  rules: [');
@@ -2062,33 +2047,28 @@ function generateModuleBody(opt) {
 
     var out;
     if (opt.rules.length > 0 || opt.in_rules_failure_analysis_mode) {
-        var p = [];
         var descr;
 
         // we don't mind that the `test_me()` code above will have this `lexer` variable re-defined:
         // JavaScript is fine with that.
         out = 'var lexer = {\n';
 
-        for (var k in RegExpLexer.prototype) {
-            if (RegExpLexer.prototype.hasOwnProperty(k) && k.indexOf('generate') === -1) {
-                // copy the function description as a comment before the implementation; supports multi-line descriptions
-                descr = '\n';
-                if (functionDescriptions[k]) {
-                    descr += '// ' + functionDescriptions[k].replace(/\n/g, '\n\/\/ ') + '\n';
-                }
-                p.push(descr + k + ':' + (RegExpLexer.prototype[k].toString() || '""'));
-            }
-        }
-        out += p.join(',\n');
+        // get the RegExpLexer.prototype in source code form:
+        var protosrc = String(getRegExpLexerPrototype);
+        // and strip off the surrounding bits we don't want:
+        protosrc = protosrc
+        .replace(/^[\s\r\n]*function getRegExpLexerPrototype\(\) \{[\s\r\n]*var __objdef__ = \{[\s]*[\r\n]/, '')
+        .replace(/[\s\r\n]*\};[\s\r\n]*return __objdef__;[\s\r\n]*\}[\s\r\n]*/, '');
+        out += protosrc + ',\n';
 
         if (opt.options) {
             // Assure all options are camelCased:
             assert(typeof opt.options['case-insensitive'] === 'undefined');
 
-            out += ',\noptions: ' + produceOptions(opt.options);
+            out += 'options: ' + produceOptions(opt.options);
         } else {
             // always provide the lexer with an options object, even if it's empty!
-            out += ',\noptions: {}';
+            out += 'options: {}';
         }
 
         out += ',\nJisonLexerError: JisonLexerError';
