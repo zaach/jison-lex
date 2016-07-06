@@ -1840,6 +1840,12 @@ RegExpLexer.prototype = {
         return this.pushState(condition);
     },
 
+    // activates a new lexer condition state (pushes the new lexer condition state onto the condition stack)
+    pushState: function lexer_pushState(condition) {
+        this.conditionStack.push(condition);
+        return this;
+    },
+
     // pop the previously active lexer condition state off the condition stack
     popState: function lexer_popState() {
         var n = this.conditionStack.length - 1;
@@ -1847,15 +1853,6 @@ RegExpLexer.prototype = {
             return this.conditionStack.pop();
         } else {
             return this.conditionStack[0];
-        }
-    },
-
-    // (internal) produce the lexer rule set which is active for the currently active lexer condition state
-    _currentRules: function lexer__currentRules() {
-        if (this.conditionStack.length && this.conditionStack[this.conditionStack.length - 1]) {
-            return this.conditions[this.conditionStack[this.conditionStack.length - 1]].rules;
-        } else {
-            return this.conditions['INITIAL'].rules;
         }
     },
 
@@ -1869,10 +1866,13 @@ RegExpLexer.prototype = {
         }
     },
 
-    // activates a new lexer condition state (pushes the new lexer condition state onto the condition stack)
-    pushState: function lexer_pushState(condition) {
-        this.conditionStack.push(condition);
-        return this;
+    // (internal) determine the lexer rule set which is active for the currently active lexer condition state
+    _currentRules: function lexer__currentRules() {
+        if (this.conditionStack.length && this.conditionStack[this.conditionStack.length - 1]) {
+            return this.conditions[this.conditionStack[this.conditionStack.length - 1]].rules;
+        } else {
+            return this.conditions['INITIAL'].rules;
+        }
     },
 
     // return the number of states currently on the stack
