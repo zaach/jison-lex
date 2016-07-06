@@ -1718,7 +1718,10 @@ var __objdef__ = {
         if (this.options.ranges) {
             this.yylloc.range = [this.offset, this.offset + this.yyleng];
         }
-        this.offset += this.yyleng;
+	// previous lex rules MAY have invoked the `more()` API rather than producing a token:
+	// those rules will already have moved this `offset` forward matching their match lengths,
+	// hence we must only add our own match length now:
+        this.offset += match[0].length;
         this._more = false;
         this._backtrack = false;
         this._input = this._input.slice(match[0].length);
