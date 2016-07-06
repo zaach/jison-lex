@@ -1484,7 +1484,11 @@ RegExpLexer.prototype = {
     EOF: 1,
     ERROR: 2,
 
-    // JisonLexerError: JisonLexerError,
+    // JisonLexerError: JisonLexerError,        // <-- injected by the code generator
+
+    // options: {},                             // <-- injected by the code generator
+
+    // yy: ...,                                 // <-- injected by setInput()
 
     parseError: function lexer_parseError(str, hash) {
         if (this.yy.parser && typeof this.yy.parser.parseError === 'function') {
@@ -1761,7 +1765,7 @@ RegExpLexer.prototype = {
             clear.call(this);
         }
         var rules = this._currentRules();
-        for (var i = 0; i < rules.length; i++) {
+        for (var i = 0, len = rules.length; i < len; i++) {
             tempMatch = this._input.match(this.rules[rules[i]]);
             if (tempMatch && (!match || tempMatch[0].length > match[0].length)) {
                 match = tempMatch;
@@ -1771,7 +1775,7 @@ RegExpLexer.prototype = {
                     if (token !== false) {
                         return token;
                     } else if (this._backtrack) {
-                        match = false;
+                        match = undefined;
                         continue; // rule action called reject() implying a rule MISmatch.
                     } else {
                         // else: this is a lexer rule which consumes input without producing a token (e.g. whitespace)
@@ -1846,7 +1850,7 @@ RegExpLexer.prototype = {
         }
     },
 
-    // produce the lexer rule set which is active for the currently active lexer condition state
+    // (internal) produce the lexer rule set which is active for the currently active lexer condition state
     _currentRules: function lexer__currentRules() {
         if (this.conditionStack.length && this.conditionStack[this.conditionStack.length - 1]) {
             return this.conditions[this.conditionStack[this.conditionStack.length - 1]].rules;
@@ -1991,11 +1995,11 @@ function generateModuleBody(opt) {
         test_match: 'test the lexed token: return FALSE when not a match, otherwise return token',
         next: 'return next match in input',
         lex: 'return next match that has a token',
-        begin: 'activates a new lexer condition state (pushes the new lexer condition state onto the condition stack)',
+        begin: 'backwards compatible alias for `pushState()`; the latter is symmetrical with `popState()` and we advise to use those APIs in any modern lexer code, rather than `begin()`.',
+        pushState: 'activates a new lexer condition state (pushes the new lexer condition state onto the condition stack)',
         popState: 'pop the previously active lexer condition state off the condition stack',
-        _currentRules: 'produce the lexer rule set which is active for the currently active lexer condition state',
         topState: 'return the currently active lexer condition state; when an index argument is provided it produces the N-th previous condition state, if available',
-        pushState: 'alias for begin(condition)',
+        _currentRules: '(internal) produce the lexer rule set which is active for the currently active lexer condition state',
         stateStackSize: 'return the number of states currently on the stack'
     };
 
@@ -2067,6 +2071,9 @@ function generateModuleBody(opt) {
             assert(typeof opt.options['case-insensitive'] === 'undefined');
 
             out += ',\noptions: ' + produceOptions(opt.options);
+        } else {
+            // always provide the lexer with an options object, even if it's empty!
+            out += ',\noptions: {}';
         }
 
         out += ',\nJisonLexerError: JisonLexerError';
