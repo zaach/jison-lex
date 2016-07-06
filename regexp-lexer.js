@@ -1666,11 +1666,23 @@ var __objdef__ = {
         return pre + this.upcomingInput().replace(/\s/g, ' ') + '\n' + c + '^';
     },
 
-    // test the lexed token: return FALSE when not a match, otherwise return token
+    // test the lexed token: return FALSE when not a match, otherwise return token.
+    //
+    // `match` is supposed to be an array coming out of a regex match, i.e. `match[0]` 
+    // contains the actually matched text string.
+    //  
+    // Also move the input cursor forward and update the match collectors:
+    // - yytext
+    // - yyleng
+    // - match
+    // - matches
+    // - yylloc
+    // - offset 
     test_match: function lexer_test_match(match, indexed_rule) {
         var token,
             lines,
-            backup;
+            backup,
+            match_str;
 
         if (this.options.backtrack_lexer) {
             // save context
@@ -1699,7 +1711,8 @@ var __objdef__ = {
             }
         }
 
-        lines = match[0].match(/(?:\r\n?|\n).*/g);
+        match_str = match[0];
+        lines = match_str.match(/(?:\r\n?|\n).*/g);
         if (lines) {
             this.yylineno += lines.length;
         }
@@ -1709,10 +1722,10 @@ var __objdef__ = {
             first_column: this.yylloc.last_column,
             last_column: lines ?
                          lines[lines.length - 1].length - lines[lines.length - 1].match(/\r?\n?/)[0].length :
-                         this.yylloc.last_column + match[0].length
+                         this.yylloc.last_column + match_str.length
         };
-        this.yytext += match[0];
-        this.match += match[0];
+        this.yytext += match_str;
+        this.match += match_str;
         this.matches = match;
         this.yyleng = this.yytext.length;
         if (this.options.ranges) {
@@ -1721,11 +1734,11 @@ var __objdef__ = {
 	// previous lex rules MAY have invoked the `more()` API rather than producing a token:
 	// those rules will already have moved this `offset` forward matching their match lengths,
 	// hence we must only add our own match length now:
-        this.offset += match[0].length;
+        this.offset += match_str.length;
         this._more = false;
         this._backtrack = false;
-        this._input = this._input.slice(match[0].length);
-        this.matched += match[0];
+        this._input = this._input.slice(match_str.length);
+        this.matched += match_str;
         token = this.performAction.call(this, this.yy, this, indexed_rule, this.conditionStack[this.conditionStack.length - 1]);
         if (this.done && this._input) {
             this.done = false;
