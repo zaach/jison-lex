@@ -1489,6 +1489,8 @@ RegExpLexer.prototype = {
     // options: {},                             // <-- injected by the code generator
 
     // yy: ...,                                 // <-- injected by setInput()
+     
+    __currentRuleSet__: null,                   // <-- internal rule set cache for the current lexer state
 
     parseError: function lexer_parseError(str, hash) {
         if (this.yy.parser && typeof this.yy.parser.parseError === 'function') {
@@ -1506,6 +1508,7 @@ RegExpLexer.prototype = {
         this.yylineno = this.yyleng = 0;
         this.yytext = this.matched = this.match = '';
         this.conditionStack = ['INITIAL'];
+        this.__currentRuleSet__ = null;
         this.yylloc = {
             first_line: 1,
             first_column: 0,
@@ -1728,6 +1731,7 @@ RegExpLexer.prototype = {
             for (var k in backup) {
                 this[k] = backup[k];
             }
+            this.__currentRuleSet__ = null;
             return false; // rule action called reject() implying the next rule should be tested instead.
         } else if (this._signaled_error_token) {
             // produce one 'error' token as .parseError() in reject() did not guarantee a failure signal by throwing an exception!
@@ -1764,7 +1768,16 @@ RegExpLexer.prototype = {
         if (!this._more) {
             clear.call(this);
         }
-        var rules = this._currentRules();
+        var rules = this.__currentRuleSet__;
+        console.warn('rulesets: ', rules, this._currentRules());
+        if (!rules) {
+            // Update the ruleset cache as we apparently encountered a state change or just started lexing.
+            // The cache is set up for fast lookup -- we assume a lexer will switch states much less often than it will
+            // invoke the `lex()` token-producing API and related APIs, hence caching the set for direct access helps
+            // speed up those activities a tiny bit.
+            rules = this.__currentRuleSet__ = this._currentRules();
+        }
+        console.warn('rulesets 2: ', rules, this._currentRules(), len = rules.length);
         for (var i = 0, len = rules.length; i < len; i++) {
             tempMatch = this._input.match(this.rules[rules[i]]);
             if (tempMatch && (!match || tempMatch[0].length > match[0].length)) {
@@ -1843,6 +1856,7 @@ RegExpLexer.prototype = {
     // activates a new lexer condition state (pushes the new lexer condition state onto the condition stack)
     pushState: function lexer_pushState(condition) {
         this.conditionStack.push(condition);
+        this.__currentRuleSet__ = null;
         return this;
     },
 
@@ -1850,6 +1864,7 @@ RegExpLexer.prototype = {
     popState: function lexer_popState() {
         var n = this.conditionStack.length - 1;
         if (n > 0) {
+            this.__currentRuleSet__ = null;
             return this.conditionStack.pop();
         } else {
             return this.conditionStack[0];
