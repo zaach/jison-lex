@@ -27,6 +27,47 @@ exports["test basic matchers"] = function() {
     assert.equal(lexer.lex(), "EOF");
 };
 
+exports["test lexer error class inheritance chain"] = function() {
+    var dict = {
+        rules: [
+           ["x", "return 'X';" ],
+           ["y", "return 'Y';" ],
+           ["$", "return 'EOF';" ]
+       ]
+    };
+
+    var input = "xxyx";
+
+    var lexer = new RegExpLexer(dict, input);
+    assert.equal(lexer.lex(), "X");
+    assert.equal(lexer.lex(), "X");
+    assert.equal(lexer.lex(), "Y");
+    assert.equal(lexer.lex(), "X");
+    assert.equal(lexer.lex(), "EOF");
+
+    var JisonLexerError = lexer.JisonLexerError;
+    var t = new JisonLexerError('test', 42);
+    assert(t instanceof Error);
+    assert(t instanceof JisonLexerError);
+    assert(t.hash === 42);
+    assert(t.message === 'test');
+    assert(t.toString() === 'JisonLexerError: test');
+
+    var t2 = new Error('a');
+    var t3 = new JisonLexerError('test', { exception: t2 });
+    assert(t2 instanceof Error);
+    assert(!(t2 instanceof JisonLexerError));
+    assert(t3 instanceof Error);
+    assert(t3 instanceof JisonLexerError);
+    assert(!t2.hash);
+    assert(t3.hash);
+    assert(t3.hash.exception);
+    assert(t2.message === 'a');
+    assert(t3.message === 'a');
+    assert(t2.toString() === 'Error: a');
+    assert(t3.toString() === 'JisonLexerError: a');
+};
+
 exports["test set yy"] = function() {
     var dict = {
         rules: [

@@ -1290,27 +1290,6 @@ function generateErrorClass() {
     }
     __extra_code__();
 
-    var t = new JisonLexerError('test', 42);
-    assert(t instanceof Error);
-    assert(t instanceof JisonLexerError);
-    assert(t.hash === 42);
-    assert(t.message === 'test');
-    assert(t.toString() === 'JisonLexerError: test');
-
-    var t2 = new Error('a');
-    var t3 = new JisonLexerError('test', { exception: t2 });
-    assert(t2 instanceof Error);
-    assert(!(t2 instanceof JisonLexerError));
-    assert(t3 instanceof Error);
-    assert(t3 instanceof JisonLexerError);
-    assert(!t2.hash);
-    assert(t3.hash);
-    assert(t3.hash.exception);
-    assert(t2.message === 'a');
-    assert(t3.message === 'a');
-    assert(t2.toString() === 'Error: a');
-    assert(t3.toString() === 'JisonLexerError: a');
-
     var prelude = [
         '// See also:',
         '// http://stackoverflow.com/questions/1382107/whats-a-good-way-to-extend-error-in-javascript/#35881508',
