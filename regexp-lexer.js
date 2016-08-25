@@ -1653,7 +1653,7 @@ var __objdef__ = {
     // Limit the returned string to the `maxLines` number of lines of input (default: 1).
     // Negative limit values equal *unlimited*.
     pastInput: function lexer_pastInput(maxSize, maxLines) {
-        var past = this.matched.substr(-this.match.length);
+        var past = this.matched.substring(0, this.matched.length - this.match.length);
         if (maxSize < 0)
             maxSize = past.length;
         else if (!maxSize)
