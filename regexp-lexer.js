@@ -1650,7 +1650,7 @@ var __objdef__ = {
 
     // return (part of the) already matched input, i.e. for error messages.
     // Limit the returned string length to `maxSize` (default: 20).
-    // Limit the returned string to the `maxLines` number of lines of input (default: 3).
+    // Limit the returned string to the `maxLines` number of lines of input (default: 1).
     // Negative limit values equal *unlimited*.
     pastInput: function lexer_pastInput(maxSize, maxLines) {
         var past = this.matched.substr(-this.match.length);
@@ -1661,7 +1661,7 @@ var __objdef__ = {
         if (maxLines < 0)
             maxLines = past.length;         // can't ever have more input lines than this!
         else if (!maxLines)
-            maxLines = 3;
+            maxLines = 1;
         // `substr` anticipation: treat \r\n as a single character and take a little
         // more than necessary so that we can still properly check against maxSize
         // after we've transformed and limited the newLines in here:
