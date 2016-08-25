@@ -1648,27 +1648,68 @@ var __objdef__ = {
         return this.unput(this.match.slice(n));
     },
 
-    // return (part of the) already matched input, i.e. for error messages
-    pastInput: function lexer_pastInput(maxSize) {
-        var past = this.matched.substr(0, this.matched.length - this.match.length);
+    // return (part of the) already matched input, i.e. for error messages.
+    // Limit the returned string length to `maxSize` (default: 20).
+    // Limit the returned string to the `maxLines` number of lines of input (default: 3).
+    // Negative limit values equal *unlimited*.
+    pastInput: function lexer_pastInput(maxSize, maxLines) {
+        var past = this.matched.substr(-this.match.length);
         if (maxSize < 0)
             maxSize = past.length;
         else if (!maxSize)
             maxSize = 20;
-        return (past.length > maxSize ? '...' + past.substr(-maxSize) : past);
+        if (maxLines < 0)
+            maxLines = past.length;         // can't ever have more input lines than this!
+        else if (!maxLines)
+            maxLines = 3;
+        // `substr` anticipation: treat \r\n as a single character and take a little
+        // more than necessary so that we can still properly check against maxSize
+        // after we've transformed and limited the newLines in here:
+        past = past.substr(-maxSize * 2 - 2);
+        // now that we have a significantly reduced string to process, transform the newlines
+        // and chop them, then limit them:
+        var a = past.replace(/\r\n|\r/g, '\n').split('\n');
+        a = a.slice(-maxLines);
+        past = a.join('\n');
+        // When, after limiting to maxLines, we still have to much to return, 
+        // do add an ellipsis prefix...
+        if (past.length > maxSize) {
+            past = '...' + past.substr(-maxSize);
+        }
+        return past;
     },
 
-    // return (part of the) upcoming input, i.e. for error messages
-    upcomingInput: function lexer_upcomingInput(maxSize) {
+    // return (part of the) upcoming input, i.e. for error messages.
+    // Limit the returned string length to `maxSize` (default: 20).
+    // Limit the returned string to the `maxLines` number of lines of input (default: 1).
+    // Negative limit values equal *unlimited*.
+    upcomingInput: function lexer_upcomingInput(maxSize, maxLines) {
         var next = this.match;
         if (maxSize < 0)
             maxSize = next.length + this._input.length;
         else if (!maxSize)
             maxSize = 20;
-        if (next.length < maxSize) {
-            next += this._input.substr(0, maxSize - next.length);
+        if (maxLines < 0)
+            maxLines = maxSize;         // can't ever have more input lines than this!
+        else if (!maxLines)
+            maxLines = 1;
+        // `substring` anticipation: treat \r\n as a single character and take a little
+        // more than necessary so that we can still properly check against maxSize
+        // after we've transformed and limited the newLines in here:
+        if (next.length < maxSize * 2 + 2) {
+            next += this._input.substring(0, maxSize * 2 + 2);  // substring is faster on Chrome/V8
         }
-        return (next.length > maxSize ? next.substr(0, maxSize) + '...' : next);
+        // now that we have a significantly reduced string to process, transform the newlines
+        // and chop them, then limit them:
+        var a = next.replace(/\r\n|\r/g, '\n').split('\n');
+        a = a.slice(0, maxLines);
+        next = a.join('\n');
+        // When, after limiting to maxLines, we still have to much to return, 
+        // do add an ellipsis postfix...
+        if (next.length > maxSize) {
+            next = next.substring(0, maxSize) + '...';
+        }
+        return next;
     },
 
     // return a string which displays the character position where the lexing error occurred, i.e. for error messages
