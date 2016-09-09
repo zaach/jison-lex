@@ -27,7 +27,7 @@
   "main": "regexp-lexer",
   "bin": "cli.js",
   "engines": {
-    "node": ">=0.4"
+    "node": ">=4.0"
   },
   "dependencies": {
     "lex-parser": "GerHobbelt/lex-parser#master",
