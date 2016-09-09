@@ -1713,10 +1713,45 @@ var __objdef__ = {
     },
 
     // return a string which displays the character position where the lexing error occurred, i.e. for error messages
-    showPosition: function lexer_showPosition() {
-        var pre = this.pastInput().replace(/\s/g, ' ');
+    showPosition: function lexer_showPosition(maxPrefix, maxPostfix) {
+        var pre = this.pastInput(maxPrefix).replace(/\s/g, ' ');
         var c = new Array(pre.length + 1).join('-');
-        return pre + this.upcomingInput().replace(/\s/g, ' ') + '\n' + c + '^';
+        return pre + this.upcomingInput(maxPostfix).replace(/\s/g, ' ') + '\n' + c + '^';
+    },
+
+    // helper function, used to produce a human readable description as a string, given
+    // the input `yylloc` location object. 
+    // Set `display_range_too` to TRUE to include the string character inex position(s)
+    // in the description if the `yylloc.range` is available. 
+    describeYYLLOC: function lexer_describe_yylloc(yylloc, display_range_too) {
+        var l1 = yylloc.first_line;
+        var l2 = yylloc.last_line;
+        var o1 = yylloc.first_column;
+        var o2 = yylloc.last_column - 1;
+        var dl = l2 - l1;
+        var d_o = (dl === 0 ? o2 - o1 : 1000);
+        var rv;
+        if (dl === 0) {
+            rv = 'line ' + l1 + ', ';
+            if (d_o === 0) {
+                rv += 'column ' + o1;
+            } else {
+                rv += 'columns ' + o1 + ' .. ' + o2;
+            }
+        } else {
+            rv = 'lines ' + l1 + '(column ' + o1 + ') .. ' + l2 + '(column ' + o2 + ')';
+        }
+        if (yylloc.range && display_range_too) {
+            var r1 = yylloc.range[0];
+            var r2 = yylloc.range[1] - 1;
+            if (r2 === r1) {
+                rv += ' {String Offset: ' + r1 + '}';
+            } else {
+                rv += ' {String Offset range: ' + r1 + ' .. ' + r2 + '}';
+            }
+        }
+        return rv;
+        // return JSON.stringify(yylloc);
     },
 
     // test the lexed token: return FALSE when not a match, otherwise return token.
