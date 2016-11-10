@@ -353,6 +353,7 @@ function updatePcodesBitarrayCacheTestOrder() {
     });
 
     Pcodes_bitarray_cache_test_order = lut;
+console.log('@@@ updatePcodesBitarrayCacheTestOrder: ', lut);    
 }
 
 
@@ -563,6 +564,8 @@ function bitarray2set(l, output_inverted_variant, output_minimized) {
     var rv = [];
     var i, j;
     var entire_range_is_marked = false;
+    var bitarr_is_cloned = false;
+
     if (output_inverted_variant) {
         // generate the inverted set, hence all unmarked slots are part of the output range:
         var cnt = 0;
@@ -618,6 +621,48 @@ function bitarray2set(l, output_inverted_variant, output_minimized) {
         else if (cnt === 0) {
             // When there's nothing in the output we output a special 'match-nothing' regex: `[^\S\s]`.
             return '^\\S\\s';
+        }
+
+        // Now see if we can replace several bits by an escape / pcode:
+        if (output_minimized) {
+            var lut = Pcodes_bitarray_cache_test_order;
+            for (var tn = 0; lut[tn]; tn++) {
+                var tspec = lut[tn];
+                // check if the uniquely identifying char is in the set:
+                if (l[tspec[0]]) {
+                    // check if the pcode is covered by the set:
+                    var pcode = tspec[1];
+                    var ba4pcode = Pcodes_bitarray_cache[pcode];
+                    var match = true;
+                    for (var j = 0; j < 65536; j++) {
+                        if (ba4pcode[j] ^ l[j]) {
+                            // mismatch!
+                            match = false;
+                            break;
+                        }
+                    }
+                    if (match) {
+                        rv.push(pcode);
+
+                        // and nuke the bits in the array which match the given pcode:
+                        // make sure these edits are visible outside this function as
+                        // `l` is an INPUT parameter (~ not modified)!
+                        if (!bitarr_is_cloned) {
+                            var l2 = new Array(65536 + 3);
+                            for (var j = 0; j < 65536; j++) {
+                                l2[j] = l[j] && !ba4pcode[j];
+                            }
+                            // recreate sentinel
+                            l2[65536] = 1;
+                            bitarr_is_cloned = true;
+                        } else {
+                            for (var j = 0; j < 65536; j++) {
+                                l[j] = l[j] && !ba4pcode[j];
+                            }
+                        }
+                    }
+                }
+            }
         }
 
         i = 0;
@@ -803,10 +848,10 @@ function reduceRegexToSetBitArray(s, name) {
         s = new Error('[macro [' + name + '] is unsuitable for use inside regex set expressions: "[' + s + ']"]: ' + ex.message);
     }
 
-console.log('reduceRegexToSetBitArray: ', {
-    orig: orig,
-    expanded: s
-});
+// console.log('reduceRegexToSetBitArray: ', {
+//     orig: orig,
+//     expanded: s
+// });
     assert(s);
     // propagate deferred exceptions = error reports.
     if (s instanceof Error) {
@@ -821,9 +866,9 @@ console.log('reduceRegexToSetBitArray: ', {
 function produceOptimizedRegex4Set(bitarr) {
     // First try to produce a minimum regex from the bitarray directly:
     var s1 = bitarray2set(bitarr, false, true);
-console.log('produceOptimizedRegex4Set: ', {
-    s1: s1
-});
+// console.log('produceOptimizedRegex4Set: ', {
+//     s1: s1
+// });
     // and when the regex set turns out to match a single pcode/escape, then
     // use that one as-is:
     var set_is_single_pcode_re = /^\\[dDwWsS]$|^\\p\{[A-Za-z0-9 \-\._]+\}$/;
@@ -839,9 +884,9 @@ console.log('produceOptimizedRegex4Set: ', {
     // Because we look at a negated bitset, there's no use looking for matches with
     // special cases here.
     var s2 = bitarray2set(bitarr, true, true);
-console.log('produceOptimizedRegex4Set: ', {
-    s2: s2
-});
+// console.log('produceOptimizedRegex4Set: ', {
+//     s2: s2
+// });
     if (s2[0] === '^') {
         s2 = s2.substr(1);
         if (s2.match(set_is_single_pcode_re)) {
