@@ -213,13 +213,19 @@ var Pcodes_bitarray_cache = {};
 
 // Helper collection for `bitarray2set()` for minifying special cases of result sets which can be represented by 
 // a single regex 'escape', e.g. `\d` for digits 0-9.
-var EscCode_bitarray_output_refs = {};
+var EscCode_bitarray_output_refs;
 
 // now initialize the EscCodes_... table above:
 init_EscCode_lookup_table();
 
 function init_EscCode_lookup_table() {
     var s, bitarr, set2esc = {}, esc2bitarr = {};
+
+    // patch global lookup tables for the time being, while we calculate their *real* content in this function:
+    EscCode_bitarray_output_refs = {
+        esc2bitarr: {},
+        set2esc: {}
+    };
 
     // `/\S':
     bitarr = new Array(65536 + 3);
@@ -467,7 +473,7 @@ function set2bitarray(bitarr, s) {
 
 
 // convert a simple bitarray back into a regex set `[...]` content:
-function bitarray2set(l, output_inverted_variant) {
+function bitarray2set(l, output_inverted_variant, optimize_output) {
     // construct the inverse(?) set from the mark-set:
     //
     // Before we do that, we inject a sentinel so that our inner loops
@@ -786,8 +792,8 @@ function reduceRegex(s, name, opts, expandAllMacrosInSet_cb, expandAllMacrosElse
             set2bitarray(l, se);
 
             // find out which set expression is optimal in size:
-            var s1 = bitarray2set(l);
-            var s2 = /* '^' + */ bitarray2set(l, true);
+            var s1 = bitarray2set(l, false, true);
+            var s2 = /* '^' + */ bitarray2set(l, true, true);
             if (s2[0] === '^') {
                 s2 = s2.substr(1);
             } else {
@@ -920,7 +926,6 @@ function prepareMacros(dict_macros, opts) {
                 // set up our own record so we can detect definition loops:
                 macros[i] = {
                     in_set: false,
-                    in_inv_set: false,
                     elsewhere: null,
                     raw: dict_macros[i]
                 };
@@ -961,21 +966,19 @@ function prepareMacros(dict_macros, opts) {
 
             var mba = reduceRegexToSetBitArray(m, i);
 
-            var s1, s2;
+            var s1;
 
             // propagate deferred exceptions = error reports.
             if (mba instanceof Error) {
-                s1 = s2 = mba;
+                s1 = mba;
             } else {
                 s1 = bitarray2set(mba, false);
-                s2 = /* '^' + */ bitarray2set(mba, true);
 		
-		m = s1;
+                m = s1;
             }
 
             macros[i] = {
                 in_set: s1,
-                in_inv_set: s2,
                 elsewhere: null,
                 raw: dict_macros[i]
             };
