@@ -13,6 +13,15 @@ const CHR_RE = /^(?:[^\\]|\\[^cxu0-9]|\\[0-9]{1,3}|\\c[A-Z]|\\x[0-9a-fA-F]{2}|\\
 const SET_PART_RE = /^(?:[^\\\]]|\\[^cxu0-9]|\\[0-9]{1,3}|\\c[A-Z]|\\x[0-9a-fA-F]{2}|\\u[0-9a-fA-F]{4}|\\u\{[0-9a-fA-F]\}{4})+/;
 const NOTHING_SPECIAL_RE = /^(?:[^\\\[\]\(\)\|^\{\}]|\\[^cxu0-9]|\\[0-9]{1,3}|\\c[A-Z]|\\x[0-9a-fA-F]{2}|\\u[0-9a-fA-F]{4}|\\u\{[0-9a-fA-F]\}{4})+/;
 
+// The expanded regex sets which are equivalent to the given `\\{c}` escapes:
+//
+// `/\s/`:
+const WHITESPACE_SETSTR = ' \f\n\r\t\v\u00a0\u1680\u180e\u2000-\u200a\u2028\u2029\u202f\u205f\u3000\ufeff';     
+// `/\d/`:
+const DIGIT_SETSTR = '0-9';
+// `/\w/`:
+const WORDCHAR_SETSTR = 'A-Za-z0-9_';
+
 
 
 // expand macros and convert matchers to RegExp's
@@ -202,6 +211,67 @@ function i2c(i) {
 // `\\p{NAME}` shorthand to represent [part of] the bitarray:
 var Pcodes_bitarray_cache = {};
 
+// Helper collection for `bitarray2set()` for minifying special cases of result sets which can be represented by 
+// a single regex 'escape', e.g. `\d` for digits 0-9.
+var EscCode_bitarray_output_refs = {};
+
+// now initialize the EscCodes_... table above:
+init_EscCode_lookup_table();
+
+function init_EscCode_lookup_table() {
+    var s, bitarr, rv = {};
+
+    // `/\S':
+    bitarr = new Array(65536 + 3);
+    set2bitarray(bitarr, '^' + WHITESPACE_SETSTR);
+    rv['S'] = {
+        setstr: bitarray2set(bitarr),
+        bitarr: bitarr
+    };
+
+    // `/\s':
+    bitarr = new Array(65536 + 3);
+    set2bitarray(bitarr, WHITESPACE_SETSTR);
+    rv['s'] = {
+        setstr: bitarray2set(bitarr),
+        bitarr: bitarr
+    };
+
+    // `/\D':
+    bitarr = new Array(65536 + 3);
+    set2bitarray(bitarr, '^' + DIGIT_SETSTR);
+    rv['D'] = {
+        setstr: bitarray2set(bitarr),
+        bitarr: bitarr
+    };
+
+    // `/\d':
+    bitarr = new Array(65536 + 3);
+    set2bitarray(bitarr, DIGIT_SETSTR);
+    rv['d'] = {
+        setstr: bitarray2set(bitarr),
+        bitarr: bitarr
+    };
+
+    // `/\W':
+    bitarr = new Array(65536 + 3);
+    set2bitarray(bitarr, '^' + WORDCHAR_SETSTR);
+    rv['W'] = {
+        setstr: bitarray2set(bitarr),
+        bitarr: bitarr
+    };
+
+    // `/\w':
+    bitarr = new Array(65536 + 3);
+    set2bitarray(bitarr, WORDCHAR_SETSTR);
+    rv['w'] = {
+        setstr: bitarray2set(bitarr),
+        bitarr: bitarr
+    };
+
+    EscCode_bitarray_output_refs = rv;
+} 
+
 
 // 'Join' a regex set `[...]` into a Unicode range spanning logic array, flagging every character in the given set.
 function set2bitarray(bitarr, s) {
@@ -339,33 +409,30 @@ function set2bitarray(bitarr, s) {
                     s = s.substr(c1.length);
                     switch (c1[1]) {
                     case 'S':
-                        // [^ \f\n\r\t\v\u00a0\u1680\u180e\u2000-\u200a\u2028\u2029\u202f\u205f\u3000\ufeff]
-                        set2bitarray(bitarr, '^ \f\n\r\t\v\u00a0\u1680\u180e\u2000-\u200a\u2028\u2029\u202f\u205f\u3000\ufeff');
+                        // [^\s]
+                        set2bitarray(bitarr, '^' + WHITESPACE_SETSTR);
                         continue;
 
                     case 's':
-                        // [ \f\n\r\t\v\u00a0\u1680\u180e\u2000-\u200a\u2028\u2029\u202f\u205f\u3000\ufeff]
-                        set2bitarray(bitarr, ' \f\n\r\t\v\u00a0\u1680\u180e\u2000-\u200a\u2028\u2029\u202f\u205f\u3000\ufeff');
+                        set2bitarray(bitarr, WHITESPACE_SETSTR);
                         continue;
 
                     case 'D':
-                        // [^0-9]
-                        set2bitarray(bitarr, '^0-9');
+                        // [^\d]
+                        set2bitarray(bitarr, '^' + DIGIT_SETSTR);
                         continue;
 
                     case 'd':
-                        // [0-9]
-                        set2bitarray(bitarr, '0-9');
+                        set2bitarray(bitarr, DIGIT_SETSTR);
                         continue;
 
                     case 'W':
-                        // [^A-Za-z0-9_]
-                        set2bitarray(bitarr, '^A-Za-z0-9_');
+                        // [^\w]
+                        set2bitarray(bitarr, '^' + WORDCHAR_SETSTR);
                         continue;
 
                     case 'w':
-                        // [A-Za-z0-9_]
-                        set2bitarray(bitarr, 'A-Za-z0-9_');
+                        set2bitarray(bitarr, WORDCHAR_SETSTR);
                         continue;
                     }
                     continue;
@@ -492,6 +559,9 @@ function bitarray2set(l, output_inverted_variant) {
         s = '\\S\\s';
     } else {
         s = rv.join('');
+
+        // See if we can minify the set by replacement:
+        // TODO
     }
 
     return s;
