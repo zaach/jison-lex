@@ -8,6 +8,8 @@ var lexParser = require('lex-parser');
 var version = require('./package.json').version;
 var assert = require('assert');
 
+const XREGEXP_UNICODE_ESCAPE_RE = /^\{[A-Za-z0-9 \-\._]+\}/;              // Matches the XRegExp Unicode escape braced part, e.g. `{Number}`
+
 // expand macros and convert matchers to RegExp's
 function prepareRules(dict, actions, caseHelper, tokens, startConditions, opts) {
     var m, i, k, action, conditions,
@@ -130,6 +132,66 @@ function prepareRules(dict, actions, caseHelper, tokens, startConditions, opts) 
     };
 }
 
+
+// Helper for `bitarray2set()`: convert character code to a representation string suitable for use in a regex
+function i2c(i) {
+    var c;
+
+    switch (i) {
+    case 10:
+        return '\\n';
+
+    case 13:
+        return '\\r';
+
+    case 9:
+        return '\\t';
+
+    case 8:
+        return '\\b';
+
+    case 12:
+        return '\\f';
+
+    case 11:
+        return '\\v';
+
+    case 45:        // ASCII/Unicode for '-' dash
+        return '\\-';
+
+    case 91:        // '['
+        return '\\[';
+
+    case 92:        // '\\'
+        return '\\\\';
+
+    case 93:        // ']'
+        return '\\]';
+
+    case 94:        // ']'
+        return '\\^';
+    }
+    // Check and warn user about Unicode Supplementary Plane content as that will be FRIED!
+    if (i >= 0xD800 && i < 0xDFFF) {
+        throw new Error("You have Unicode Supplementary Plane content in a regex set: JavaScript has severe problems with Supplementary Plane content, particularly in regexes, so you are kindly required to get rid of this stuff. Sorry! (Offending UCS-2 code which triggered this: 0x" + i.toString(16) + ")");
+    }
+    if (i < 32
+            || i > 0xFFF0 /* Unicode Specials, also in UTF16 */
+            || (i >= 0xD800 && i < 0xDFFF) /* Unicode Supplementary Planes; we're TOAST in JavaScript as we're NOT UTF-16 but UCS-2! */
+            || String.fromCharCode(i).match(/[\u2028\u2029]/) /* Code compilation via `new Function()` does not like to see these, or rather: treats them as just another form of CRLF, which breaks your generated regex code! */
+        ) {
+        // Detail about a detail:
+        // U+2028 and U+2029 are part of the `\s` regex escape code (`\s` and `[\s]` match either of these) and when placed in a JavaScript
+        // source file verbatim (without escaping it as a `\uNNNN` item) then JavaScript will interpret it as such and consequently report
+        // a b0rked generated parser, as the generated code would include this regex right here.
+        // Hence we MUST escape these buggers everywhere we go...
+        c = '0000' + i.toString(16);
+        return '\\u' + c.substr(c.length - 4);
+    }
+    return String.fromCharCode(i);
+}
+
+
 // 'Join' a regex set `[...]` into a Unicode range spanning logic array, flagging every character in the given set.
 function set2bitarray(bitarr, s) {
     var orig = s;
@@ -229,7 +291,6 @@ function set2bitarray(bitarr, s) {
         // This results in an OR operations when sets are joined/chained.
 
         var chr_re = /^(?:[^\\]|\\[^cxu0-9]|\\[0-9]{1,3}|\\c[A-Z]|\\x[0-9a-fA-F]{2}|\\u[0-9a-fA-F]{4}|\\u\{[0-9a-fA-F]\}{4})/;
-        var xregexp_unicode_escape_re = /^\{[A-Za-z0-9 \-\._]+\}/;              // Matches the XRegExp Unicode escape braced part, e.g. `{Number}`
 
         while (s.length) {
             var c1 = s.match(chr_re);
@@ -244,7 +305,7 @@ function set2bitarray(bitarr, s) {
                 switch (c1) {
                 case '\\p':
                     s = s.substr(c1.length);
-                    var c2 = s.match(xregexp_unicode_escape_re);
+                    var c2 = s.match(XREGEXP_UNICODE_ESCAPE_RE);
                     if (c2) {
                         c2 = c2[0];
                         s = s.substr(c2.length);
@@ -347,63 +408,6 @@ function set2bitarray(bitarr, s) {
 
 // convert a simple bitarray back into a regex set `[...]` content:
 function bitarray2set(l, output_inverted_variant) {
-    function i2c(i) {
-        var c;
-
-        switch (i) {
-        case 10:
-            return '\\n';
-
-        case 13:
-            return '\\r';
-
-        case 9:
-            return '\\t';
-
-        case 8:
-            return '\\b';
-
-        case 12:
-            return '\\f';
-
-        case 11:
-            return '\\v';
-
-        case 45:        // ASCII/Unicode for '-' dash
-            return '\\-';
-
-        case 91:        // '['
-            return '\\[';
-
-        case 92:        // '\\'
-            return '\\\\';
-
-        case 93:        // ']'
-            return '\\]';
-
-        case 94:        // ']'
-            return '\\^';
-        }
-        // Check and warn user about Unicode Supplementary Plane content as that will be FRIED!
-        if (i >= 0xD800 && i < 0xDFFF) {
-            throw new Error("You have Unicode Supplementary Plane content in a regex set: JavaScript has severe problems with Supplementary Plane content, particularly in regexes, so you are kindly required to get rid of this stuff. Sorry! (Offending UCS-2 code which triggered this: 0x" + i.toString(16) + ")");
-        }
-        if (i < 32
-                || i > 0xFFF0 /* Unicode Specials, also in UTF16 */
-                || (i >= 0xD800 && i < 0xDFFF) /* Unicode Supplementary Planes; we're TOAST in JavaScript as we're NOT UTF-16 but UCS-2! */
-                || String.fromCharCode(i).match(/[\u2028\u2029]/) /* Code compilation via `new Function()` does not like to see these, or rather: treats them as just another form of CRLF, which breaks your generated regex code! */
-            ) {
-            // Detail about a detail:
-            // U+2028 and U+2029 are part of the `\s` regex escape code (`\s` and `[\s]` match either of these) and when placed in a JavaScript
-            // source file verbatim (without escaping it as a `\uNNNN` item) then JavaScript will interpret it as such and consequently report
-            // a b0rked generated parser, as the generated code would include this regex right here.
-            // Hence we MUST escape these buggers everywhere we go...
-            c = '0000' + i.toString(16);
-            return '\\u' + c.substr(c.length - 4);
-        }
-        return String.fromCharCode(i);
-    }
-
     // construct the inverse(?) set from the mark-set:
     //
     // Before we do that, we inject a sentinel so that our inner loops
@@ -627,6 +631,11 @@ function reduceRegexToSet(s, name) {
         s = new Error('[macro [' + name + '] is unsuitable for use inside regex set expressions: "[' + s + ']"]: ' + ex.message);
     }
 
+console.log('reduceRegexToSet: ', {
+    orig: orig,
+    expanded: s
+});
+    assert(s);
     return s;
 }
 
@@ -654,7 +663,6 @@ function reduceRegex(s, name, opts, expandAllMacrosInSet_cb, expandAllMacrosElse
     var chr_re = /^(?:[^\\]|\\[^cxu0-9]|\\[0-9]{1,3}|\\c[A-Z]|\\x[0-9a-fA-F]{2}|\\u[0-9a-fA-F]{4}|\\u\{[0-9a-fA-F]\}{4})/;
     var set_part_re = /^(?:[^\\\]]|\\[^cxu0-9]|\\[0-9]{1,3}|\\c[A-Z]|\\x[0-9a-fA-F]{2}|\\u[0-9a-fA-F]{4}|\\u\{[0-9a-fA-F]\}{4})+/;
     var nothing_special_re = /^(?:[^\\\[\]\(\)\|^\{\}]|\\[^cxu0-9]|\\[0-9]{1,3}|\\c[A-Z]|\\x[0-9a-fA-F]{2}|\\u[0-9a-fA-F]{4}|\\u\{[0-9a-fA-F]\}{4})+/;
-    var xregexp_unicode_escape_re = /^\{[A-Za-z0-9 \-\._]+\}/;              // Matches the XRegExp Unicode escape braced part, e.g. `{Number}`
 
     var rv = [];
 
@@ -730,6 +738,12 @@ function reduceRegex(s, name, opts, expandAllMacrosInSet_cb, expandAllMacrosElse
             //
             // The indexOf('{') picks both XRegExp Unicode escapes and JISON lexer macros, which is perfect for us here.
             var has_expansions = (se.indexOf('{') >= 0);
+if ('' + orig !== '' + se) console.log('reduceRegex::expand-set: ', {
+    orig: orig,
+    to_expand: se,
+    bitset_re: s1,
+    bitset_inv_re: s2
+});
             if (s2.length < s1.length) {
                 s1 = s2;
             }
@@ -741,7 +755,7 @@ function reduceRegex(s, name, opts, expandAllMacrosInSet_cb, expandAllMacrosElse
 
         // XRegExp Unicode escape, e.g. `\\p{Number}`:
         case '\\p':
-            var c2 = s.match(xregexp_unicode_escape_re);
+            var c2 = s.match(XREGEXP_UNICODE_ESCAPE_RE);
             if (c2) {
                 c2 = c2[0];
                 s = s.substr(c2.length);
@@ -824,36 +838,13 @@ function reduceRegex(s, name, opts, expandAllMacrosInSet_cb, expandAllMacrosElse
         return new Error(errinfo() + ': expands to an invalid regex: /' + s + '/');
     }
 
+if ('' + orig !== '' + s) console.log('reduceRegex: ', {
+    orig: orig,
+    expanded: s
+});
+    assert(s);
     return s;
 }
-
-
-// 'normalize' a `[...]` set by inverting an inverted `[^...]` set:
-function normalizeSet(s, output_inverted_variant) {
-    var orig = s;
-
-    // propagate deferred exceptions = error reports.
-    if (s instanceof Error) {
-        return s;
-    }
-
-    if (s && s.length) {
-        // // inverted set?
-        // if (s[0] === '^') {
-        //     output_inverted_variant = !output_inverted_variant;
-        //     s = s.substr(1);
-        // }
-
-        var l = new Array(65536 + 3);
-        set2bitarray(l, s);
-
-        s = bitarray2set(l, output_inverted_variant);
-    }
-
-    return s;
-}
-
-
 
 
 // expand macros within macros and cache the result
@@ -911,9 +902,22 @@ function prepareMacros(dict_macros, opts) {
 
             m = reduceRegexToSet(m, i);
 
+            var s1, s2;
+
+            // propagate deferred exceptions = error reports.
+            if (m instanceof Error) {
+                s1 = s2 = m;
+            } else {
+                var l = new Array(65536 + 3);
+                set2bitarray(l, m);
+
+                s1 = bitarray2set(l, false);
+                s2 = /* '^' + */ bitarray2set(l, true);
+            }
+
             macros[i] = {
-                in_set: normalizeSet(m, false),
-                in_inv_set: normalizeSet(m, true),
+                in_set: s1,
+                in_inv_set: s2,
                 elsewhere: null,
                 raw: dict_macros[i]
             };
@@ -946,7 +950,6 @@ function prepareMacros(dict_macros, opts) {
             // the macro MAY contain other macros which MAY be inside a `[...]` set in this
             // macro or elsewhere, hence we must parse the regex:
             m = reduceRegex(m, i, opts, expandAllMacrosInSet, expandAllMacrosElsewhere);
-            assert(m);
             // propagate deferred exceptions = error reports.
             if (m instanceof Error) {
                 return m;
