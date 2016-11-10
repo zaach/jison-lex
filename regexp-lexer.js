@@ -9,6 +9,11 @@ var version = require('./package.json').version;
 var assert = require('assert');
 
 const XREGEXP_UNICODE_ESCAPE_RE = /^\{[A-Za-z0-9 \-\._]+\}/;              // Matches the XRegExp Unicode escape braced part, e.g. `{Number}`
+const CHR_RE = /^(?:[^\\]|\\[^cxu0-9]|\\[0-9]{1,3}|\\c[A-Z]|\\x[0-9a-fA-F]{2}|\\u[0-9a-fA-F]{4}|\\u\{[0-9a-fA-F]\}{4})/;
+const SET_PART_RE = /^(?:[^\\\]]|\\[^cxu0-9]|\\[0-9]{1,3}|\\c[A-Z]|\\x[0-9a-fA-F]{2}|\\u[0-9a-fA-F]{4}|\\u\{[0-9a-fA-F]\}{4})+/;
+const NOTHING_SPECIAL_RE = /^(?:[^\\\[\]\(\)\|^\{\}]|\\[^cxu0-9]|\\[0-9]{1,3}|\\c[A-Z]|\\x[0-9a-fA-F]{2}|\\u[0-9a-fA-F]{4}|\\u\{[0-9a-fA-F]\}{4})+/;
+
+
 
 // expand macros and convert matchers to RegExp's
 function prepareRules(dict, actions, caseHelper, tokens, startConditions, opts) {
@@ -290,10 +295,8 @@ function set2bitarray(bitarr, s) {
         // BITARR collects flags for characters set. Inversion means the complement set of character is st instead.
         // This results in an OR operations when sets are joined/chained.
 
-        var chr_re = /^(?:[^\\]|\\[^cxu0-9]|\\[0-9]{1,3}|\\c[A-Z]|\\x[0-9a-fA-F]{2}|\\u[0-9a-fA-F]{4}|\\u\{[0-9a-fA-F]\}{4})/;
-
         while (s.length) {
-            var c1 = s.match(chr_re);
+            var c1 = s.match(CHR_RE);
             if (!c1) {
                 // hit an illegal escape sequence? cope anyway!
                 c1 = s[0];
@@ -374,7 +377,7 @@ function set2bitarray(bitarr, s) {
             if (s[0] === '-' && s.length >= 2) {
                 // we can expect a range like 'a-z':
                 s = s.substr(1);
-                var c2 = s.match(chr_re);
+                var c2 = s.match(CHR_RE);
                 if (!c2) {
                     // hit an illegal escape sequence? cope anyway!
                     c2 = s[0];
@@ -492,15 +495,11 @@ function reduceRegexToSet(s, name) {
         return s;
     }
 
-    var chr_re = /^(?:[^\\]|\\[^cxu0-9]|\\[0-9]{1,3}|\\c[A-Z]|\\x[0-9a-fA-F]{2}|\\u[0-9a-fA-F]{4}|\\u\{[0-9a-fA-F]\}{4})/;
-    var set_part_re = /^(?:[^\\\]]|\\[^cxu0-9]|\\[0-9]{1,3}|\\c[A-Z]|\\x[0-9a-fA-F]{2}|\\u[0-9a-fA-F]{4}|\\u\{[0-9a-fA-F]\}{4})+/;
-    var nothing_special_re = /^(?:[^\\\[\]\(\)\|^]|\\[^cxu0-9]|\\[0-9]{1,3}|\\c[A-Z]|\\x[0-9a-fA-F]{2}|\\u[0-9a-fA-F]{4}|\\u\{[0-9a-fA-F]\}{4})+/;
-
     var l = new Array(65536 + 3);
     var internal_state = 0;
 
     while (s.length) {
-        var c1 = s.match(chr_re);
+        var c1 = s.match(CHR_RE);
         if (!c1) {
             // cope with illegal escape sequences too!
             return new Error('illegal escape sequence at start of regex part: "' + s + '" of regex "' + orig + '"');
@@ -514,9 +513,9 @@ function reduceRegexToSet(s, name) {
             // this is starting a set within the regex: scan until end of set!
             var set_content = [];
             while (s.length) {
-                var inner = s.match(set_part_re);
+                var inner = s.match(SET_PART_RE);
                 if (!inner) {
-                    inner = s.match(chr_re);
+                    inner = s.match(CHR_RE);
                     if (!inner) {
                         // cope with illegal escape sequences too!
                         return new Error('illegal escape sequence at start of regex part: ' + s + '" of regex "' + orig + '"');
@@ -532,7 +531,7 @@ function reduceRegexToSet(s, name) {
             }
 
             // ensure that we hit the terminating ']':
-            var c2 = s.match(chr_re);
+            var c2 = s.match(CHR_RE);
             if (!c2) {
                 // cope with illegal escape sequences too!
                 return new Error('regex set expression is broken in regex: "' + orig + '" --> "' + s + '"');
@@ -660,14 +659,10 @@ function reduceRegex(s, name, opts, expandAllMacrosInSet_cb, expandAllMacrosElse
         return s;
     }
 
-    var chr_re = /^(?:[^\\]|\\[^cxu0-9]|\\[0-9]{1,3}|\\c[A-Z]|\\x[0-9a-fA-F]{2}|\\u[0-9a-fA-F]{4}|\\u\{[0-9a-fA-F]\}{4})/;
-    var set_part_re = /^(?:[^\\\]]|\\[^cxu0-9]|\\[0-9]{1,3}|\\c[A-Z]|\\x[0-9a-fA-F]{2}|\\u[0-9a-fA-F]{4}|\\u\{[0-9a-fA-F]\}{4})+/;
-    var nothing_special_re = /^(?:[^\\\[\]\(\)\|^\{\}]|\\[^cxu0-9]|\\[0-9]{1,3}|\\c[A-Z]|\\x[0-9a-fA-F]{2}|\\u[0-9a-fA-F]{4}|\\u\{[0-9a-fA-F]\}{4})+/;
-
     var rv = [];
 
     while (s.length) {
-        var c1 = s.match(chr_re);
+        var c1 = s.match(CHR_RE);
         if (!c1) {
             // cope with illegal escape sequences too!
             return new Error(errinfo() + ': illegal escape sequence at start of regex part: ' + s);
@@ -683,9 +678,9 @@ function reduceRegex(s, name, opts, expandAllMacrosInSet_cb, expandAllMacrosElse
             var l = new Array(65536 + 3);
 
             while (s.length) {
-                var inner = s.match(set_part_re);
+                var inner = s.match(SET_PART_RE);
                 if (!inner) {
-                    inner = s.match(chr_re);
+                    inner = s.match(CHR_RE);
                     if (!inner) {
                         // cope with illegal escape sequences too!
                         return new Error(errinfo() + ': illegal escape sequence at start of regex part: ' + s);
@@ -701,7 +696,7 @@ function reduceRegex(s, name, opts, expandAllMacrosInSet_cb, expandAllMacrosElse
             }
 
             // ensure that we hit the terminating ']':
-            var c2 = s.match(chr_re);
+            var c2 = s.match(CHR_RE);
             if (!c2) {
                 // cope with illegal escape sequences too!
                 return new Error(errinfo() + ': regex set expression is broken: "' + s + '"');
@@ -771,7 +766,7 @@ if ('' + orig !== '' + se) console.log('reduceRegex::expand-set: ', {
         // Either a range expression or the start of a macro reference: `.{1,3}` or `{NAME}`.
         // Treat it as a macro reference and see if it will expand to anything:
         case '{':
-            var c2 = s.match(nothing_special_re);
+            var c2 = s.match(NOTHING_SPECIAL_RE);
             if (c2) {
                 c2 = c2[0];
                 s = s.substr(c2.length);
@@ -808,7 +803,7 @@ if ('' + orig !== '' + se) console.log('reduceRegex::expand-set: ', {
         default:
             // non-set character or word: see how much of this there is for us and then see if there
             // are any macros still lurking inside there:
-            var c2 = s.match(nothing_special_re);
+            var c2 = s.match(NOTHING_SPECIAL_RE);
             if (c2) {
                 c2 = c2[0];
                 s = s.substr(c2.length);
