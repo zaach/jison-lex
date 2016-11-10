@@ -1970,10 +1970,10 @@ exports["test nested macro expansion in regex set atoms"] = function() {
     //console.log("RULES:::::::::::::::", lexer.rules);
     var expandedMacros = lexer.getExpandedMacros();
     //console.log("MACROS:::::::::::::::", expandedMacros);
-    assert.equal(expandedMacros.DIGIT.in_set, '0-9');
+    assert.equal(expandedMacros.DIGIT.in_set, '\\d');
     assert.equal(expandedMacros.ALPHA.in_set, 'A-Za-z');
     assert.equal(expandedMacros.ALNUM.in_set, '0-9A-Za-z');
-    assert.equal(expandedMacros.ALNUM.elsewhere, '[0-9A-Za-z]');
+    assert.equal(expandedMacros.ALNUM.elsewhere, '[\\dA-Za-z]');
 
     lexer.setInput(input);
 
@@ -2012,10 +2012,10 @@ exports["test nested macro expansion in regex set atoms with negating surroundin
     //console.log("RULES:::::::::::::::", lexer.rules);
     var expandedMacros = lexer.getExpandedMacros();
     //console.log("MACROS:::::::::::::::", expandedMacros);
-    assert.equal(expandedMacros.DIGIT.in_set, '0-9');
+    assert.equal(expandedMacros.DIGIT.in_set, '\\d');
     assert.equal(expandedMacros.ALPHA.in_set, 'A-Za-z');
     assert.equal(expandedMacros.ALNUM.in_set, '0-9A-Za-z');
-    assert.equal(expandedMacros.ALNUM.elsewhere, '[0-9A-Za-z]');
+    assert.equal(expandedMacros.ALNUM.elsewhere, '[\\dA-Za-z]');
     // assert.equal(expandedMacros.CTRL.in_inv_set, '0-9A-Za-z');
     assert.equal(expandedMacros.CTRL.elsewhere, '[^0-9A-Za-z]');
 
@@ -2042,8 +2042,8 @@ exports["test nested macro expansion in regex set atoms with negating inner set"
             "CTRL":  "[^{ALNUM}]",
             "WORD":  "[BLUB:]|[^{CTRL}]",
             "WS":    "[^\\S\\r\\n]",
-            "ANY":   "[^\\W\\w]",
-            "ANY2":   "[\\W\\w]",
+            "NONE":  "[^\\W\\w]",
+            "ANY":   "[\\W\\w]",
         },
         rules: [
             ["π", "return 'PI';" ],
@@ -2060,10 +2060,10 @@ exports["test nested macro expansion in regex set atoms with negating inner set"
     //console.log("RULES:::::::::::::::", lexer.rules);
     var expandedMacros = lexer.getExpandedMacros();
     //console.log("MACROS:::::::::::::::", expandedMacros);
-    assert.equal(expandedMacros.DIGIT.in_set, '0-9');
+    assert.equal(expandedMacros.DIGIT.in_set, '\\d');
     assert.equal(expandedMacros.ALPHA.in_set, 'A-Za-z');
     assert.equal(expandedMacros.ALNUM.in_set, '0-9A-Za-z');
-    assert.equal(expandedMacros.ALNUM.elsewhere, '[0-9A-Za-z]|\\d');
+    assert.equal(expandedMacros.ALNUM.elsewhere, '[\\dA-Za-z]|\\d');
     assert.equal(expandedMacros.CTRL.in_set, '\\u0000-/:-@\\[-`{-\\uffff' /* '^0-9a-zA-Z' */ );
     assert.equal(expandedMacros.CTRL.elsewhere, '[^0-9A-Za-z]');
     // Unicode Character 'LINE SEPARATOR' (U+2028) and Unicode Character 'PARAGRAPH SEPARATOR' (U+2029) must be explicitly encoded in \uNNNN
@@ -2071,10 +2071,10 @@ exports["test nested macro expansion in regex set atoms with negating inner set"
     // regexes with these two characters embedded as is! 
     assert.equal(expandedMacros.WS.in_set, '\\t\\v\\f \u00a0\u1680\u180e\u2000-\u200a\\u2028\\u2029\u202f\u205f\u3000\ufeff');
     assert.equal(expandedMacros.WS.elsewhere, '[^\\S\\r\\n]');
-    assert.equal(expandedMacros.ANY.in_set, '^\\S\\s');
-    assert.equal(expandedMacros.ANY.elsewhere, '[^\\S\\s]');
-    assert.equal(expandedMacros.ANY2.in_set, '\\S\\s');
-    assert.equal(expandedMacros.ANY2.elsewhere, '[\\S\\s]');
+    assert.equal(expandedMacros.ANY.in_set, '\\S\\s');
+    assert.equal(expandedMacros.ANY.elsewhere, '[\\S\\s]');
+    assert.equal(expandedMacros.NONE.in_set, '^\\S\\s');
+    assert.equal(expandedMacros.NONE.elsewhere, '[^\\S\\s]');
 
     lexer.setInput(input);
 

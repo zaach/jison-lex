@@ -553,7 +553,7 @@ function set2bitarray(bitarr, s) {
 
 
 // convert a simple bitarray back into a regex set `[...]` content:
-function bitarray2set(l, output_inverted_variant) {
+function bitarray2set(l, output_inverted_variant, output_minimized) {
     // construct the inverse(?) set from the mark-set:
     //
     // Before we do that, we inject a sentinel so that our inner loops
@@ -565,6 +565,24 @@ function bitarray2set(l, output_inverted_variant) {
     var entire_range_is_marked = false;
     if (output_inverted_variant) {
         // generate the inverted set, hence all unmarked slots are part of the output range:
+        var cnt = 0;
+        for (var i = 0; i < 65536; i++) {
+            if (!l[i]) {
+                cnt++;
+            }
+        }
+        if (cnt === 65536) {
+            // When there's nothing in the output we output a special 'match-nothing' regex: `[^\S\s]`.
+            // BUT... since we output the INVERTED set, we output the match-all set instead:
+            return '\\S\\s';
+        }
+        else if (cnt === 0) {
+            // When we find the entire Unicode range is in the output match set, we replace this with
+            // a shorthand regex: `[\S\s]`
+            // BUT... since we output the INVERTED set, we output the match-nothing set instead:
+            return '^\\S\\s';
+        }
+        
         i = 0;
         while (i <= 65535) {
             // find first character not in original set:
@@ -586,6 +604,22 @@ function bitarray2set(l, output_inverted_variant) {
         }
     } else {
         // generate the non-inverted set, hence all logic checks are inverted here...
+        var cnt = 0;
+        for (var i = 0; i < 65536; i++) {
+            if (l[i]) {
+                cnt++;
+            }
+        }
+        if (cnt === 65536) {
+            // When we find the entire Unicode range is in the output match set, we replace this with
+            // a shorthand regex: `[\S\s]`
+            return '\\S\\s';
+        }
+        else if (cnt === 0) {
+            // When there's nothing in the output we output a special 'match-nothing' regex: `[^\S\s]`.
+            return '^\\S\\s';
+        }
+
         i = 0;
         while (i <= 65535) {
             // find first character not in original set:
@@ -610,20 +644,16 @@ function bitarray2set(l, output_inverted_variant) {
         }
     }
 
-    // When there's nothing in the output we output a special 'match-nothing' regex: `[^\S\s]`.
-    // When we find the entire Unicode range is in the output match set, we also replace this with
-    // a shorthand regex: `[\S\s]` (thus replacing the `[\u0000-\uffff]` regex we generated here).
-    var s;
-    if (!rv.length) {
-        // entire range turns out to be EXCLUDED:
-        s = '^\\S\\s';
-    } else if (entire_range_is_marked) {
-        // entire range turns out to be INCLUDED:
-        s = '\\S\\s';
-    } else {
-        s = rv.join('');
-    }
+    assert(rv.length);
+    var s = rv.join('');
+    assert(s);
 
+    // Check if the set is better represented by one of the regex escapes:
+    var esc4s = EscCode_bitarray_output_refs.set2esc[s];
+    if (esc4s) {
+        // When we hit a special case like this, it is always the shortest notation, hence wins on the spot!
+        return '\\' + esc4s;
+    }
     return s;
 }
 
@@ -790,11 +820,17 @@ console.log('reduceRegexToSetBitArray: ', {
 // -- or in this example it can be further optimized to only `\d`!
 function produceOptimizedRegex4Set(bitarr) {
     // First try to produce a minimum regex from the bitarray directly:
-    var s1 = bitarray2set(bitarr, false);
-    var esc4s = EscCode_bitarray_output_refs.set2esc[s1];
-    if (esc4s) {
+    var s1 = bitarray2set(bitarr, false, true);
+console.log('produceOptimizedRegex4Set: ', {
+    s1: s1
+});
+    // and when the regex set turns out to match a single pcode/escape, then
+    // use that one as-is:
+    var set_is_single_pcode_re = /^\\[dDwWsS]$|^\\p\{[A-Za-z0-9 \-\._]+\}$/;
+
+    if (s1.match(set_is_single_pcode_re)) {
         // When we hit a special case like this, it is always the shortest notation, hence wins on the spot!
-        return '\\' + esc4s;
+        return s1;
     } else {
         s1 = '[' + s1 + ']';
     }
@@ -802,9 +838,16 @@ function produceOptimizedRegex4Set(bitarr) {
     // Now try to produce a minimum regex from the *inverted* bitarray via negation:
     // Because we look at a negated bitset, there's no use looking for matches with
     // special cases here.
-    var s2 = bitarray2set(bitarr, true);
+    var s2 = bitarray2set(bitarr, true, true);
+console.log('produceOptimizedRegex4Set: ', {
+    s2: s2
+});
     if (s2[0] === '^') {
         s2 = s2.substr(1);
+        if (s2.match(set_is_single_pcode_re)) {
+            // When we hit a special case like this, it is always the shortest notation, hence wins on the spot!
+            return s2;
+        }
     } else {
         s2 = '^' + s2;
     }
