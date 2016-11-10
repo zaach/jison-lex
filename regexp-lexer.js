@@ -233,6 +233,8 @@ function init_EscCode_lookup_table() {
     s = bitarray2set(bitarr);
     esc2bitarr['S'] = bitarr;
     set2esc[s] = 'S';
+    // set2esc['^' + s] = 's';
+    Pcodes_bitarray_cache['\\S'] = bitarr;
 
     // `/\s':
     bitarr = new Array(65536 + 3);
@@ -240,6 +242,8 @@ function init_EscCode_lookup_table() {
     s = bitarray2set(bitarr);
     esc2bitarr['s'] = bitarr;
     set2esc[s] = 's';
+    // set2esc['^' + s] = 'S';
+    Pcodes_bitarray_cache['\\s'] = bitarr;
 
     // `/\D':
     bitarr = new Array(65536 + 3);
@@ -247,6 +251,8 @@ function init_EscCode_lookup_table() {
     s = bitarray2set(bitarr);
     esc2bitarr['D'] = bitarr;
     set2esc[s] = 'D';
+    // set2esc['^' + s] = 'd';
+    Pcodes_bitarray_cache['\\D'] = bitarr;
 
     // `/\d':
     bitarr = new Array(65536 + 3);
@@ -254,6 +260,8 @@ function init_EscCode_lookup_table() {
     s = bitarray2set(bitarr);
     esc2bitarr['d'] = bitarr;
     set2esc[s] = 'd';
+    // set2esc['^' + s] = 'D';
+    Pcodes_bitarray_cache['\\d'] = bitarr;
 
     // `/\W':
     bitarr = new Array(65536 + 3);
@@ -261,6 +269,8 @@ function init_EscCode_lookup_table() {
     s = bitarray2set(bitarr);
     esc2bitarr['W'] = bitarr;
     set2esc[s] = 'W';
+    // set2esc['^' + s] = 'w';
+    Pcodes_bitarray_cache['\\W'] = bitarr;
 
     // `/\w':
     bitarr = new Array(65536 + 3);
@@ -268,6 +278,8 @@ function init_EscCode_lookup_table() {
     s = bitarray2set(bitarr);
     esc2bitarr['w'] = bitarr;
     set2esc[s] = 'w';
+    // set2esc['^' + s] = 'W';
+    Pcodes_bitarray_cache['\\w'] = bitarr;
 
     EscCode_bitarray_output_refs = {
         esc2bitarr: esc2bitarr,
@@ -385,20 +397,19 @@ function set2bitarray(bitarr, s) {
                         c2 = c2[0];
                         s = s.substr(c2.length);
                         // do we have this one cached already?
-                        var ba4p = Pcodes_bitarray_cache[c2];
+                        var pex = c1 + c2;
+                        var ba4p = Pcodes_bitarray_cache[pex];
                         if (!ba4p) {
                             // expand escape:
-                            var xr = new XRegExp('[' + c1 + c2 + ']');           // TODO: case-insensitive grammar???
+                            var xr = new XRegExp('[' + pex + ']');           // TODO: case-insensitive grammar???
                             // rewrite to a standard `[...]` regex set: XRegExp will do this for us via `XRegExp.toString()`:
                             var xs = '' + xr;
                             // remove the wrapping `/.../` to get at the (possibly *combined* series of) `[...]` sets inside:
                             xs = xs.substr(1, xs.length - 2);
 
-                            ba4p = reduceRegexToSetBitArray(xs, c1 + c2);
-                            //ba4p = new Array(65536 + 3);
-                            //set2bitarray(ba4p, xs);
+                            ba4p = reduceRegexToSetBitArray(xs, pex);
 
-                            Pcodes_bitarray_cache[c2] = ba4p;
+                            Pcodes_bitarray_cache[pex] = ba4p;
                         }
                         // merge bitarrays:
                         add2bitarray(bitarr, ba4p);
@@ -473,7 +484,7 @@ function set2bitarray(bitarr, s) {
 
 
 // convert a simple bitarray back into a regex set `[...]` content:
-function bitarray2set(l, output_inverted_variant, optimize_output) {
+function bitarray2set(l, output_inverted_variant) {
     // construct the inverse(?) set from the mark-set:
     //
     // Before we do that, we inject a sentinel so that our inner loops
@@ -542,9 +553,6 @@ function bitarray2set(l, output_inverted_variant, optimize_output) {
         s = '\\S\\s';
     } else {
         s = rv.join('');
-
-        // See if we can minify the set by replacement:
-        // TODO
     }
 
     return s;
@@ -709,6 +717,37 @@ console.log('reduceRegexToSetBitArray: ', {
 }
 
 
+// Convert bitarray representing, for example, `'0-9'` to regex string `[0-9]` 
+// -- or in this example it can be further optimized to only `\d`!
+function produceOptimizedRegex4Set(bitarr) {
+    // First try to produce a minimum regex from the bitarray directly:
+    var s1 = bitarray2set(bitarr, false);
+    var esc4s = EscCode_bitarray_output_refs.set2esc[s1];
+    if (esc4s) {
+        // When we hit a special case like this, it is always the shortest notation, hence wins on the spot!
+        return '\\' + esc4s;
+    } else {
+        s1 = '[' + s1 + ']';
+    }
+
+    // Now try to produce a minimum regex from the *inverted* bitarray via negation:
+    // Because we look at a negated bitset, there's no use looking for matches with
+    // special cases here.
+    var s2 = bitarray2set(bitarr, true);
+    if (s2[0] === '^') {
+        s2 = s2.substr(1);
+    } else {
+        s2 = '^' + s2;
+    }
+    s2 = '[' + s2 + ']';
+
+    if (s2.length < s1.length) {
+        s1 = s2;
+    }
+
+    return s1;
+}
+
 // expand all macros (with maybe one exception) in the given regex: the macros may exist inside `[...]` regex sets or
 // elsewhere, which requires two different treatments to expand these macros.
 function reduceRegex(s, name, opts, expandAllMacrosInSet_cb, expandAllMacrosElsewhere_cb) {
@@ -792,30 +831,25 @@ function reduceRegex(s, name, opts, expandAllMacrosInSet_cb, expandAllMacrosElse
             set2bitarray(l, se);
 
             // find out which set expression is optimal in size:
-            var s1 = bitarray2set(l, false, true);
-            var s2 = /* '^' + */ bitarray2set(l, true, true);
-            if (s2[0] === '^') {
-                s2 = s2.substr(1);
-            } else {
-                s2 = '^' + s2;
-            }
+            var s1 = produceOptimizedRegex4Set(l);
+
             // check if the source regex set potentially has any expansions (guestimate!)
             //
             // The indexOf('{') picks both XRegExp Unicode escapes and JISON lexer macros, which is perfect for us here.
             var has_expansions = (se.indexOf('{') >= 0);
+
+            se = '[' + se + ']';
+            
 if ('' + orig !== '' + se) console.log('reduceRegex::expand-set: ', {
     orig: orig,
+    has_expansions: has_expansions,
     to_expand: se,
-    bitset_re: s1,
-    bitset_inv_re: s2
+    bitset_re: s1
 });
-            if (s2.length < s1.length) {
-                s1 = s2;
-            }
             if (!has_expansions && se.length < s1.length) {
                 s1 = se;
             }
-            rv.push('[' + s1 + ']');
+            rv.push(s1);
             break;
 
         // XRegExp Unicode escape, e.g. `\\p{Number}`:

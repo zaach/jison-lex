@@ -2063,7 +2063,7 @@ exports["test nested macro expansion in regex set atoms with negating inner set"
     assert.equal(expandedMacros.DIGIT.in_set, '0-9');
     assert.equal(expandedMacros.ALPHA.in_set, 'A-Za-z');
     assert.equal(expandedMacros.ALNUM.in_set, '0-9A-Za-z');
-    assert.equal(expandedMacros.ALNUM.elsewhere, '[0-9A-Za-z]|[0-9]');
+    assert.equal(expandedMacros.ALNUM.elsewhere, '[0-9A-Za-z]|\\d');
     assert.equal(expandedMacros.CTRL.in_set, '\\u0000-/:-@\\[-`{-\\uffff' /* '^0-9a-zA-Z' */ );
     assert.equal(expandedMacros.CTRL.elsewhere, '[^0-9A-Za-z]');
     // Unicode Character 'LINE SEPARATOR' (U+2028) and Unicode Character 'PARAGRAPH SEPARATOR' (U+2029) must be explicitly encoded in \uNNNN
