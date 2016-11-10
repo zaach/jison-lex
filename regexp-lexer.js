@@ -464,10 +464,10 @@ function bitarray2set(l, output_inverted_variant) {
     // a shorthand regex: `[\S\s]` (thus replacing the `[\u0000-\uffff]` regex we generated here).
     var s;
     if (!rv.length) {
-        // entire range turnes out to be EXCLUDED:
+        // entire range turns out to be EXCLUDED:
         s = '^\\S\\s';
     } else if (entire_range_is_marked) {
-        // entire range turnes out to be INCLUDED:
+        // entire range turns out to be INCLUDED:
         s = '\\S\\s';
     } else {
         s = rv.join('');
