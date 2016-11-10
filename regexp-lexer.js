@@ -201,26 +201,11 @@ function i2c(i) {
 function set2bitarray(bitarr, s) {
     var orig = s;
     var set_is_inverted = false;
-    var apply = [];
 
     function mark(d1, d2) {
         if (d2 == null) d2 = d1;
         for (var i = d1; i <= d2; i++) {
             bitarr[i] = true;
-        }
-    }
-
-    function exec() {
-        // array gets sorted on entry [0] of each sub-array
-        apply.sort(function (a, b) {
-            return a[0] - b[0];
-        });
-
-        // When we have marked all slots, '^' NEGATES the set, hence we flip all slots:
-        if (set_is_inverted) {
-            for (var i = 0; i < 65536; i++) {
-                bitarr[i] = !bitarr[i];
-            }
         }
     }
 
@@ -402,9 +387,16 @@ function set2bitarray(bitarr, s) {
             mark(v1);
         }
 
+        // When we have marked all slots, '^' NEGATES the set, hence we flip all slots.
+        // 
         // Since a regex like `[^]` should match everything(?really?), we don't need to check if the MARK
-        // phase actually marked anything at all (apply.length > 0):
-        exec();
+        // phase actually marked anything at all: the `^` negation will correctly flip=mark the entire
+        // range then.
+        if (set_is_inverted) {
+            for (var i = 0; i < 65536; i++) {
+                bitarr[i] = !bitarr[i];
+            }
+        }
     }
 }
 
