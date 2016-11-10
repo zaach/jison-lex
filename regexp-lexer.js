@@ -219,57 +219,54 @@ var EscCode_bitarray_output_refs = {};
 init_EscCode_lookup_table();
 
 function init_EscCode_lookup_table() {
-    var s, bitarr, rv = {};
+    var s, bitarr, set2esc = {}, esc2bitarr = {};
 
     // `/\S':
     bitarr = new Array(65536 + 3);
     set2bitarray(bitarr, '^' + WHITESPACE_SETSTR);
-    rv['S'] = {
-        setstr: bitarray2set(bitarr),
-        bitarr: bitarr
-    };
+    s = bitarray2set(bitarr);
+    esc2bitarr['S'] = bitarr;
+    set2esc[s] = 'S';
 
     // `/\s':
     bitarr = new Array(65536 + 3);
     set2bitarray(bitarr, WHITESPACE_SETSTR);
-    rv['s'] = {
-        setstr: bitarray2set(bitarr),
-        bitarr: bitarr
-    };
+    s = bitarray2set(bitarr);
+    esc2bitarr['s'] = bitarr;
+    set2esc[s] = 's';
 
     // `/\D':
     bitarr = new Array(65536 + 3);
     set2bitarray(bitarr, '^' + DIGIT_SETSTR);
-    rv['D'] = {
-        setstr: bitarray2set(bitarr),
-        bitarr: bitarr
-    };
+    s = bitarray2set(bitarr);
+    esc2bitarr['D'] = bitarr;
+    set2esc[s] = 'D';
 
     // `/\d':
     bitarr = new Array(65536 + 3);
     set2bitarray(bitarr, DIGIT_SETSTR);
-    rv['d'] = {
-        setstr: bitarray2set(bitarr),
-        bitarr: bitarr
-    };
+    s = bitarray2set(bitarr);
+    esc2bitarr['d'] = bitarr;
+    set2esc[s] = 'd';
 
     // `/\W':
     bitarr = new Array(65536 + 3);
     set2bitarray(bitarr, '^' + WORDCHAR_SETSTR);
-    rv['W'] = {
-        setstr: bitarray2set(bitarr),
-        bitarr: bitarr
-    };
+    s = bitarray2set(bitarr);
+    esc2bitarr['W'] = bitarr;
+    set2esc[s] = 'W';
 
     // `/\w':
     bitarr = new Array(65536 + 3);
     set2bitarray(bitarr, WORDCHAR_SETSTR);
-    rv['w'] = {
-        setstr: bitarray2set(bitarr),
-        bitarr: bitarr
-    };
+    s = bitarray2set(bitarr);
+    esc2bitarr['w'] = bitarr;
+    set2esc[s] = 'w';
 
-    EscCode_bitarray_output_refs = rv;
+    EscCode_bitarray_output_refs = {
+        esc2bitarr: esc2bitarr,
+        set2esc: set2esc
+    };
 } 
 
 
@@ -282,6 +279,14 @@ function set2bitarray(bitarr, s) {
         if (d2 == null) d2 = d1;
         for (var i = d1; i <= d2; i++) {
             bitarr[i] = true;
+        }
+    }
+
+    function add2bitarray(dst, src) {
+        for (var i = 0; i < 65536; i++) {
+            if (src[i]) {
+                dst[i] = true;
+            }
         }
     }
 
@@ -390,11 +395,7 @@ function set2bitarray(bitarr, s) {
                             Pcodes_bitarray_cache[c2] = ba4p;
                         }
                         // merge bitarrays:
-                        for (var i = 0; i < 65536; i++) {
-                            if (ba4p[i]) {
-                                bitarr[i] = true;
-                            }
-                        }
+                        add2bitarray(bitarr, ba4p);
                         continue;
                     }
                     break;
@@ -407,34 +408,10 @@ function set2bitarray(bitarr, s) {
                 case '\\D':
                     // these can't participate in a range, but need to be treated special:
                     s = s.substr(c1.length);
-                    switch (c1[1]) {
-                    case 'S':
-                        // [^\s]
-                        set2bitarray(bitarr, '^' + WHITESPACE_SETSTR);
-                        continue;
-
-                    case 's':
-                        set2bitarray(bitarr, WHITESPACE_SETSTR);
-                        continue;
-
-                    case 'D':
-                        // [^\d]
-                        set2bitarray(bitarr, '^' + DIGIT_SETSTR);
-                        continue;
-
-                    case 'd':
-                        set2bitarray(bitarr, DIGIT_SETSTR);
-                        continue;
-
-                    case 'W':
-                        // [^\w]
-                        set2bitarray(bitarr, '^' + WORDCHAR_SETSTR);
-                        continue;
-
-                    case 'w':
-                        set2bitarray(bitarr, WORDCHAR_SETSTR);
-                        continue;
-                    }
+                    // check for \S, \s, \D, \d, \W, \w and expand them:
+                    var ba4e = EscCode_bitarray_output_refs.esc2bitarr[c1[1]];
+                    assert(ba4e);
+                    add2bitarray(bitarr, ba4e);
                     continue;
 
                 case '\\b':
