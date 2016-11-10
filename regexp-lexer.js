@@ -197,6 +197,12 @@ function i2c(i) {
 }
 
 
+// Helper collection for `bitarray2set()`: we have expanded all these cached `\\p{NAME}` regex sets when creating
+// this bitarray and now we should look at these expansions again to see if `bitarray2set()` can produce a
+// `\\p{NAME}` shorthand to represent [part of] the bitarray:
+var Pcodes_bitarray_cache = {};
+
+
 // 'Join' a regex set `[...]` into a Unicode range spanning logic array, flagging every character in the given set.
 function set2bitarray(bitarr, s) {
     var orig = s;
@@ -262,7 +268,7 @@ function set2bitarray(bitarr, s) {
                 return '\r';
 
             default:
-                // just the chracter itself:
+                // just the character itself:
                 return s.substr(1);
             }
         } else {
@@ -297,13 +303,28 @@ function set2bitarray(bitarr, s) {
                     if (c2) {
                         c2 = c2[0];
                         s = s.substr(c2.length);
-                        // expand escape:
-                        var xr = new XRegExp('[' + c1 + c2 + ']');           // TODO: case-insensitive grammar???
-                        var xs = '' + xr;
-                        // remove the wrapping `/[...]/`:
-                        xs = xs.substr(2, xs.length - 4);
-                        // inject back into source string:
-                        s = xs + s;
+                        // do we have this one cached already?
+                        var ba4p = Pcodes_bitarray_cache[c2];
+                        if (!ba4p) {
+                            // expand escape:
+                            var xr = new XRegExp('[' + c1 + c2 + ']');           // TODO: case-insensitive grammar???
+                            // rewrite to a standard `[...]` regex set: XRegExp will do this for us via `XRegExp.toString()`:
+                            var xs = '' + xr;
+                            // remove the wrapping `/.../` to get at the (possibly *combined* series of) `[...]` sets inside:
+                            xs = xs.substr(1, xs.length - 2);
+
+                            ba4p = reduceRegexToSetBitArray(xs, c1 + c2);
+                            //ba4p = new Array(65536 + 3);
+                            //set2bitarray(ba4p, xs);
+
+                            Pcodes_bitarray_cache[c2] = ba4p;
+                        }
+                        // merge bitarrays:
+                        for (var i = 0; i < 65536; i++) {
+                            if (ba4p[i]) {
+                                bitarr[i] = true;
+                            }
+                        }
                         continue;
                     }
                     break;
@@ -479,7 +500,7 @@ function bitarray2set(l, output_inverted_variant) {
 
 // Pretty brutal conversion of 'regex' `s` back to raw regex set content: strip outer [...] when they're there;
 // ditto for inner combos of sets, i.e. `]|[` as in `[0-9]|[a-z]`.
-function reduceRegexToSet(s, name) {
+function reduceRegexToSetBitArray(s, name) {
     var orig = s;
 
     // propagate deferred exceptions = error reports.
@@ -622,12 +643,16 @@ function reduceRegexToSet(s, name) {
         s = new Error('[macro [' + name + '] is unsuitable for use inside regex set expressions: "[' + s + ']"]: ' + ex.message);
     }
 
-console.log('reduceRegexToSet: ', {
+console.log('reduceRegexToSetBitArray: ', {
     orig: orig,
     expanded: s
 });
     assert(s);
-    return s;
+    // propagate deferred exceptions = error reports.
+    if (s instanceof Error) {
+        return s;
+    }
+    return l;
 }
 
 
@@ -887,19 +912,18 @@ function prepareMacros(dict_macros, opts) {
                 }
             }
 
-            m = reduceRegexToSet(m, i);
+            var mba = reduceRegexToSetBitArray(m, i);
 
             var s1, s2;
 
             // propagate deferred exceptions = error reports.
-            if (m instanceof Error) {
-                s1 = s2 = m;
+            if (mba instanceof Error) {
+                s1 = s2 = mba;
             } else {
-                var l = new Array(65536 + 3);
-                set2bitarray(l, m);
-
-                s1 = bitarray2set(l, false);
-                s2 = /* '^' + */ bitarray2set(l, true);
+                s1 = bitarray2set(mba, false);
+                s2 = /* '^' + */ bitarray2set(mba, true);
+		
+		m = s1;
             }
 
             macros[i] = {
