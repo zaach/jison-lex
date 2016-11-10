@@ -210,6 +210,7 @@ function i2c(i) {
 // this bitarray and now we should look at these expansions again to see if `bitarray2set()` can produce a
 // `\\p{NAME}` shorthand to represent [part of] the bitarray:
 var Pcodes_bitarray_cache = {};
+var Pcodes_bitarray_cache_test_order = [];
 
 // Helper collection for `bitarray2set()` for minifying special cases of result sets which can be represented by 
 // a single regex 'escape', e.g. `\d` for digits 0-9.
@@ -226,6 +227,7 @@ function init_EscCode_lookup_table() {
         esc2bitarr: {},
         set2esc: {}
     };
+    Pcodes_bitarray_cache_test_order = [];
 
     // `/\S':
     bitarr = new Array(65536 + 3);
@@ -285,7 +287,73 @@ function init_EscCode_lookup_table() {
         esc2bitarr: esc2bitarr,
         set2esc: set2esc
     };
+
+    updatePcodesBitarrayCacheTestOrder();
 } 
+
+function updatePcodesBitarrayCacheTestOrder() {
+    var t = new Array(65536);
+    var l = {};
+
+    // mark every character with which regex pcodes they are part of:
+    for (var k in Pcodes_bitarray_cache) {
+        var ba = Pcodes_bitarray_cache[k];
+
+        var cnt = 0;
+        for (var i = 0; i < 65536; i++) {
+            if (ba[i]) {
+                cnt++;
+                if (!t[i]) {
+                    t[i] = [k];
+                } else {
+                    t[i].push(k);
+                }
+            }
+        }
+        l[k] = cnt;
+    }
+
+    // now dig out the unique ones: only need one per pcode.
+    // 
+    // We ASSUME every \\p{NAME} 'pcode' has at least ONE character
+    // in it that is ONLY matched by that particular pcode. 
+    // If this assumption fails, nothing is lost, but our 'regex set
+    // optimized representation' will be sub-optimal as than this pcode
+    // won't be tested during optimization. 
+    // 
+    // Now that would be a pity, so the assumption better holds...
+    var lut = [];
+    var done = {};
+
+    for (var i = 0; i < 65536; i++) {
+        var k = t[i][0];
+        if (t[i].length === 1 && !done[k]) {
+            lut.push([i, k]);
+            done[k] = true;
+        }
+    }
+
+    // order from large set to small set so that small sets don't gobble
+    // characters also represented by overlapping larger set pcodes.
+    // 
+    // Again we assume something: that finding the large regex pcode sets
+    // before the smaller, more specialized ones, will produce a more
+    // optimal minification of the regex set expression. 
+    // 
+    // This is a guestimate/heuristic only!
+    lut.sort(function (a, b) {
+        var k1 = a[1];
+        var k2 = b[1];
+        var ld = l[k1] - l[k2];
+        if (ld) {
+            return ld;
+        }
+        // and for same-size sets, order from high to low unique identifier.
+        return a[0] - b[0];
+    });
+
+    Pcodes_bitarray_cache_test_order = lut;
+}
 
 
 // 'Join' a regex set `[...]` into a Unicode range spanning logic array, flagging every character in the given set.
@@ -410,6 +478,7 @@ function set2bitarray(bitarr, s) {
                             ba4p = reduceRegexToSetBitArray(xs, pex);
 
                             Pcodes_bitarray_cache[pex] = ba4p;
+                            updatePcodesBitarrayCacheTestOrder();
                         }
                         // merge bitarrays:
                         add2bitarray(bitarr, ba4p);
