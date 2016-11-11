@@ -630,6 +630,75 @@ function bitarray2set(l, output_inverted_variant, output_minimized) {
             // BUT... since we output the INVERTED set, we output the match-nothing set instead:
             return '^\\S\\s';
         }
+
+        // Now see if we can replace several bits by an escape / pcode:
+        if (output_minimized) {
+            var lut = Pcodes_bitarray_cache_test_order;
+            for (var tn = 0; lut[tn]; tn++) {
+                var tspec = lut[tn];
+                // check if the uniquely identifying char is in the inverted set:
+                if (!l[tspec[0]]) {
+                    // check if the pcode is covered by the inverted set:
+                    var pcode = tspec[1];
+                    var ba4pcode = Pcodes_bitarray_cache[pcode];
+                    var match = 0;
+                    for (var j = 0; j < 65536; j++) {
+                        if (ba4pcode[j]) {
+                            if (!l[j]) {
+                                // match in current inverted bitset, i.e. there's at
+                                // least one 'new' bit covered by this pcode/escape:
+                                match++;
+                            } else if (l_orig[j]) {
+                                // mismatch!
+                                match = false;
+console.log('@@@ match FAIL on mini: ', {
+    match: match,
+    tspec: tspec,
+    pcode: pcode, 
+    j: j,
+    ba: ba4pcode[j],
+    l: l[j],
+    xor: !ba4pcode[j] ^ !l[j],
+    rv: rv,
+});                        
+                                break;
+                            }
+                        }
+                    }
+console.log('@@@ match on mini: ', {
+    match: match,
+    tspec: tspec,
+    rv: rv,
+});                 
+                    // We're only interested in matches which actually cover some 
+                    // yet uncovered bits: `match !== 0 && match !== false`.
+                    // 
+                    // Apply the heuristic that the pcode/escape is only going to be used
+                    // when it covers *more* characters than its own identifier's length:
+                    if (match && match > pcode.length) {
+                        rv.push(pcode);
+
+                        // and nuke the bits in the array which match the given pcode:
+                        // make sure these edits are visible outside this function as
+                        // `l` is an INPUT parameter (~ not modified)!
+                        if (!bitarr_is_cloned) {
+                            var l2 = new Array(65536 + 3);
+                            for (var j = 0; j < 65536; j++) {
+                                l2[j] = l[j] || ba4pcode[j];    // `!(!l[j] && !ba4pcode[j])`
+                            }
+                            // recreate sentinel
+                            l2[65536] = 1;
+                            l = l2;
+                            bitarr_is_cloned = true;
+                        } else {
+                            for (var j = 0; j < 65536; j++) {
+                                l[j] = l[j] || ba4pcode[j];
+                            }
+                        }
+                    }
+                }
+            }
+        }
         
         i = 0;
         while (i <= 65535) {

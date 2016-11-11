@@ -1973,7 +1973,7 @@ exports["test nested macro expansion in regex set atoms"] = function() {
     assert.equal(expandedMacros.DIGIT.in_set, '\\d');
     assert.equal(expandedMacros.ALPHA.in_set, 'A-Za-z');
     assert.equal(expandedMacros.ALNUM.in_set, '0-9A-Za-z');
-    assert.equal(expandedMacros.ALNUM.elsewhere, '[\\dA-Za-z]');
+    assert.equal(expandedMacros.ALNUM.elsewhere, '[^\\W_]');   /* [0-9A-Za-z] */
 
     lexer.setInput(input);
 
@@ -2015,9 +2015,9 @@ exports["test nested macro expansion in regex set atoms with negating surroundin
     assert.equal(expandedMacros.DIGIT.in_set, '\\d');
     assert.equal(expandedMacros.ALPHA.in_set, 'A-Za-z');
     assert.equal(expandedMacros.ALNUM.in_set, '0-9A-Za-z');
-    assert.equal(expandedMacros.ALNUM.elsewhere, '[\\dA-Za-z]');
+    assert.equal(expandedMacros.ALNUM.elsewhere, '[^\\W_]');   /* [0-9A-Za-z] */
     // assert.equal(expandedMacros.CTRL.in_inv_set, '0-9A-Za-z');
-    assert.equal(expandedMacros.CTRL.elsewhere, '[\\W_]');   /* [^\\dA-Za-z] */
+    assert.equal(expandedMacros.CTRL.elsewhere, '[\\W_]');   /* [^0-9A-Za-z] */
 
     lexer.setInput(input);
 
@@ -2065,16 +2065,16 @@ exports["test nested macro expansion in regex set atoms with negating inner set"
     assert.equal(expandedMacros.DIGIT.in_set, '\\d');
     assert.equal(expandedMacros.ALPHA.in_set, 'A-Za-z');
     assert.equal(expandedMacros.ALNUM.in_set, '0-9A-Za-z');
-    assert.equal(expandedMacros.ALNUM.elsewhere, '[\\dA-Za-z]|\\d');
+    assert.equal(expandedMacros.ALNUM.elsewhere, '[^\\W_]|\\d');   /* [0-9A-Za-z]|[0-9] */
     assert.equal(expandedMacros.CTRL.in_set, '\\u0000-/:-@\\[-`{-\\uffff' /* '^0-9a-zA-Z' */ );
     assert.equal(expandedMacros.CTRL.elsewhere, '[\\W_]');  /* [^0-9A-Za-z] */
     assert.equal(expandedMacros.WORD.in_set, '0-:A-Za-z');
-    assert.equal(expandedMacros.WORD.elsewhere, '[:BLU]|[\\dA-Za-z]');
+    assert.equal(expandedMacros.WORD.elsewhere, '[:BLU]|[^\\W_]');
     // Unicode Character 'LINE SEPARATOR' (U+2028) and Unicode Character 'PARAGRAPH SEPARATOR' (U+2029) must be explicitly encoded in \uNNNN
     // syntax to prevent crashes when the generated is compiled via `new Function()` as that one doesn't like it when you feed it
     // regexes with these two characters embedded as is! 
     assert.equal(expandedMacros.WS.in_set, '\\t\\v\\f \u00a0\u1680\u180e\u2000-\u200a\\u2028\\u2029\u202f\u205f\u3000\ufeff');
-    assert.equal(expandedMacros.WS.elsewhere, '[^\\S\\r\\n]');
+    assert.equal(expandedMacros.WS.elsewhere, '[^\\S\\n\\r]');
     assert.equal(expandedMacros.ANY.in_set, '\\S\\s');
     assert.equal(expandedMacros.ANY.elsewhere, '[\\S\\s]');
     assert.equal(expandedMacros.NONE.in_set, '^\\S\\s');
