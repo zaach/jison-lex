@@ -608,7 +608,6 @@ function bitarray2set(l, output_inverted_variant, output_minimized) {
     // now reconstruct the regex set:
     var rv = [];
     var i, j;
-    var entire_range_is_marked = false;
     var bitarr_is_cloned = false;
     var l_orig = l;
 
@@ -646,7 +645,6 @@ function bitarray2set(l, output_inverted_variant, output_minimized) {
             // generate subset:
             rv.push(i2c(i));
             if (j - 1 > i) {
-                entire_range_is_marked = (i === 0 && j === 65536);
                 rv.push((j - 2 > i ? '-' : '') + i2c(j - 1));
             }
             i = j;
@@ -755,7 +753,6 @@ console.log('@@@ match on mini: ', {
             // generate subset:
             rv.push(i2c(i));
             if (j - 1 > i) {
-                entire_range_is_marked = (i === 0 && j === 65536);
                 rv.push((j - 2 > i ? '-' : '') + i2c(j - 1));
             }
             i = j;
