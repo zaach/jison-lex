@@ -361,6 +361,7 @@ console.log('@@@ updatePcodesBitarrayCacheTestOrder: ', lut);
 function set2bitarray(bitarr, s) {
     var orig = s;
     var set_is_inverted = false;
+    var bitarr_orig;
 
     function mark(d1, d2) {
         if (d2 == null) d2 = d1;
@@ -441,8 +442,10 @@ function set2bitarray(bitarr, s) {
     if (s && s.length) {
         // inverted set?
         if (s[0] === '^') {
-            set_is_inverted = !set_is_inverted;
+            set_is_inverted = true;
             s = s.substr(1);
+            bitarr_orig = bitarr;
+            bitarr = new Array(65536);
         }
 
         // BITARR collects flags for characters set. Inversion means the complement set of character is st instead.
@@ -546,7 +549,9 @@ function set2bitarray(bitarr, s) {
         // range then.
         if (set_is_inverted) {
             for (var i = 0; i < 65536; i++) {
-                bitarr[i] = !bitarr[i];
+                if (!bitarr[i]) {
+                    bitarr_orig[i] = true;
+                }
             }
         }
     }
