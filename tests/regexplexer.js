@@ -2017,7 +2017,7 @@ exports["test nested macro expansion in regex set atoms with negating surroundin
     assert.equal(expandedMacros.ALNUM.in_set, '0-9A-Za-z');
     assert.equal(expandedMacros.ALNUM.elsewhere, '[\\dA-Za-z]');
     // assert.equal(expandedMacros.CTRL.in_inv_set, '0-9A-Za-z');
-    assert.equal(expandedMacros.CTRL.elsewhere, '[^0-9A-Za-z]');
+    assert.equal(expandedMacros.CTRL.elsewhere, '[\\W_]');   /* [^\\dA-Za-z] */
 
     lexer.setInput(input);
 
@@ -2067,9 +2067,9 @@ exports["test nested macro expansion in regex set atoms with negating inner set"
     assert.equal(expandedMacros.ALNUM.in_set, '0-9A-Za-z');
     assert.equal(expandedMacros.ALNUM.elsewhere, '[\\dA-Za-z]|\\d');
     assert.equal(expandedMacros.CTRL.in_set, '\\u0000-/:-@\\[-`{-\\uffff' /* '^0-9a-zA-Z' */ );
-    assert.equal(expandedMacros.CTRL.elsewhere, '[^0-9A-Za-z]');
+    assert.equal(expandedMacros.CTRL.elsewhere, '[\\W_]');  /* [^0-9A-Za-z] */
     assert.equal(expandedMacros.WORD.in_set, '0-:A-Za-z');
-    assert.equal(expandedMacros.WORD.elsewhere, '[:BLU]|[0-9A-Za-z]');
+    assert.equal(expandedMacros.WORD.elsewhere, '[:BLU]|[\\dA-Za-z]');
     // Unicode Character 'LINE SEPARATOR' (U+2028) and Unicode Character 'PARAGRAPH SEPARATOR' (U+2029) must be explicitly encoded in \uNNNN
     // syntax to prevent crashes when the generated is compiled via `new Function()` as that one doesn't like it when you feed it
     // regexes with these two characters embedded as is! 
@@ -2082,7 +2082,7 @@ exports["test nested macro expansion in regex set atoms with negating inner set"
     assert.ok(expandedMacros.DIGITS.in_set instanceof Error);
     assert.equal(expandedMacros.DIGITS.elsewhere, '\\d+');
     assert.ok(expandedMacros.WORDS.in_set instanceof Error);
-    assert.equal(expandedMacros.WORDS.elsewhere, '[0-:A-Za-z]+');
+    assert.equal(expandedMacros.WORDS.elsewhere, '[\\d:A-Za-z]+');
 
     lexer.setInput(input);
 

@@ -322,16 +322,56 @@ function updatePcodesBitarrayCacheTestOrder() {
     // won't be tested during optimization. 
     // 
     // Now that would be a pity, so the assumption better holds...
+    // Turns out the assumption doesn't hold already for /\S/ + /\D/
+    // as the second one (\D) is a pure subset of \S. So we have to
+    // look for markers which match multiple escapes/pcodes for those
+    // ones where a unique item isn't available...
     var lut = [];
     var done = {};
+    var keys = Object.keys(Pcodes_bitarray_cache);
 
     for (var i = 0; i < 65536; i++) {
         var k = t[i][0];
         if (t[i].length === 1 && !done[k]) {
+            assert(l[k] > 0);
             lut.push([i, k]);
             done[k] = true;
         }
     }
+console.log('@@@ updatePcodesBitarrayCacheTestOrder: l-k #1: ', {
+    lut: lut,
+    done: done,
+    keys: keys
+});    
+    for (var j = 0; keys[j]; j++) {
+        var k = keys[j];
+        if (!done[k]) {
+            assert(l[k] > 0);
+            // find a minimum span character to mark this one:
+            var w = Infinity;
+            var rv;
+            var ba = Pcodes_bitarray_cache[k];
+            for (var i = 0; i < 65536; i++) {
+                if (ba[i]) {
+                    var tl = t[i].length;
+                    if (tl > 1 && tl < w) {
+                        assert(l[k] > 0);
+                        rv = [i, k];
+                        w = tl;
+                    }
+                }
+            }
+            if (rv) {
+                done[k] = true;
+                lut.push(rv);
+            }
+        }
+    }
+console.log('@@@ updatePcodesBitarrayCacheTestOrder: l-k #2: ', {
+    lut: lut,
+    done: done,
+    keys: keys
+});    
 
     // order from large set to small set so that small sets don't gobble
     // characters also represented by overlapping larger set pcodes.
@@ -344,12 +384,12 @@ function updatePcodesBitarrayCacheTestOrder() {
     lut.sort(function (a, b) {
         var k1 = a[1];
         var k2 = b[1];
-        var ld = l[k1] - l[k2];
+        var ld = l[k2] - l[k1];
         if (ld) {
             return ld;
         }
         // and for same-size sets, order from high to low unique identifier.
-        return a[0] - b[0];
+        return b[0] - a[0];
     });
 
     Pcodes_bitarray_cache_test_order = lut;
@@ -570,6 +610,7 @@ function bitarray2set(l, output_inverted_variant, output_minimized) {
     var i, j;
     var entire_range_is_marked = false;
     var bitarr_is_cloned = false;
+    var l_orig = l;
 
     if (output_inverted_variant) {
         // generate the inverted set, hence all unmarked slots are part of the output range:
@@ -638,15 +679,41 @@ function bitarray2set(l, output_inverted_variant, output_minimized) {
                     // check if the pcode is covered by the set:
                     var pcode = tspec[1];
                     var ba4pcode = Pcodes_bitarray_cache[pcode];
-                    var match = true;
+                    var match = 0;
                     for (var j = 0; j < 65536; j++) {
-                        if (ba4pcode[j] ^ l[j]) {
-                            // mismatch!
-                            match = false;
-                            break;
+                        if (ba4pcode[j]) {
+                            if (l[j]) {
+                                // match in current bitset, i.e. there's at
+                                // least one 'new' bit covered by this pcode/escape:
+                                match++;
+                            } else if (!l_orig[j]) {
+                                // mismatch!
+                                match = false;
+console.log('@@@ match FAIL on mini: ', {
+    match: match,
+    tspec: tspec,
+    pcode: pcode, 
+    j: j,
+    ba: ba4pcode[j],
+    l: l[j],
+    xor: !ba4pcode[j] ^ !l[j],
+    rv: rv,
+});                        
+                                break;
+                            }
                         }
                     }
-                    if (match) {
+console.log('@@@ match on mini: ', {
+    match: match,
+    tspec: tspec,
+    rv: rv,
+});                 
+                    // We're only interested in matches which actually cover some 
+                    // yet uncovered bits: `match !== 0 && match !== false`.
+                    // 
+                    // Apply the heuristic that the pcode/escape is only going to be used
+                    // when it covers *more* characters than its own identifier's length:
+                    if (match && match > pcode.length) {
                         rv.push(pcode);
 
                         // and nuke the bits in the array which match the given pcode:
@@ -659,6 +726,7 @@ function bitarray2set(l, output_inverted_variant, output_minimized) {
                             }
                             // recreate sentinel
                             l2[65536] = 1;
+                            l = l2;
                             bitarr_is_cloned = true;
                         } else {
                             for (var j = 0; j < 65536; j++) {
@@ -871,9 +939,9 @@ function reduceRegexToSetBitArray(s, name) {
 function produceOptimizedRegex4Set(bitarr) {
     // First try to produce a minimum regex from the bitarray directly:
     var s1 = bitarray2set(bitarr, false, true);
-// console.log('produceOptimizedRegex4Set: ', {
-//     s1: s1
-// });
+console.log('produceOptimizedRegex4Set: ', {
+    s1: s1
+});
     // and when the regex set turns out to match a single pcode/escape, then
     // use that one as-is:
     var set_is_single_pcode_re = /^\\[dDwWsS]$|^\\p\{[A-Za-z0-9 \-\._]+\}$/;
@@ -889,9 +957,9 @@ function produceOptimizedRegex4Set(bitarr) {
     // Because we look at a negated bitset, there's no use looking for matches with
     // special cases here.
     var s2 = bitarray2set(bitarr, true, true);
-// console.log('produceOptimizedRegex4Set: ', {
-//     s2: s2
-// });
+console.log('produceOptimizedRegex4Set: ', {
+    s2: s2
+});
     if (s2[0] === '^') {
         s2 = s2.substr(1);
         if (s2.match(set_is_single_pcode_re)) {
@@ -1002,7 +1070,7 @@ function reduceRegex(s, name, opts, expandAllMacrosInSet_cb, expandAllMacrosElse
 
             se = '[' + se + ']';
             
-if ('' + orig !== '' + se) console.log('reduceRegex::expand-set: ', {
+console.log('reduceRegex::expand-set: ', {
     orig: orig,
     has_expansions: has_expansions,
     to_expand: se,
