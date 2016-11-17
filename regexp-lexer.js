@@ -2055,7 +2055,7 @@ var __objdef__ = {
         var a = past.replace(/\r\n|\r/g, '\n').split('\n');
         a = a.slice(-maxLines);
         past = a.join('\n');
-        // When, after limiting to maxLines, we still have to much to return, 
+        // When, after limiting to maxLines, we still have too much to return, 
         // do add an ellipsis prefix...
         if (past.length > maxSize) {
             past = '...' + past.substr(-maxSize);
@@ -2088,7 +2088,7 @@ var __objdef__ = {
         var a = next.replace(/\r\n|\r/g, '\n').split('\n');
         a = a.slice(0, maxLines);
         next = a.join('\n');
-        // When, after limiting to maxLines, we still have to much to return, 
+        // When, after limiting to maxLines, we still have too much to return, 
         // do add an ellipsis postfix...
         if (next.length > maxSize) {
             next = next.substring(0, maxSize) + '...';
