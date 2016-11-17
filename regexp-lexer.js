@@ -2105,7 +2105,7 @@ var __objdef__ = {
 
     // helper function, used to produce a human readable description as a string, given
     // the input `yylloc` location object. 
-    // Set `display_range_too` to TRUE to include the string character inex position(s)
+    // Set `display_range_too` to TRUE to include the string character index position(s)
     // in the description if the `yylloc.range` is available. 
     describeYYLLOC: function lexer_describe_yylloc(yylloc, display_range_too) {
         var l1 = yylloc.first_line;
