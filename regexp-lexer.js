@@ -1840,9 +1840,7 @@ function RegExpLexer(dict, input, tokens) {
     });
 
     lexer.yy = {};
-    if (input) {
-        lexer.setInput(input);
-    }
+    lexer.setInput(input);
 
     lexer.generate = function () {
         return generateFromOpts(opts);
@@ -1901,7 +1899,7 @@ var __objdef__ = {
     // resets the lexer, sets new input
     setInput: function lexer_setInput(input, yy) {
         this.yy = yy || this.yy || {};
-        this._input = input;
+        this._input = input || '';
         this.clear();
         this._signaled_error_token = this.done = false;
         this.yylineno = 0;
