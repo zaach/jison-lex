@@ -1904,6 +1904,46 @@ var __objdef__ = {
 
     __currentRuleSet__: null,                   // <-- internal rule set cache for the current lexer state
 
+    __error_infos: [],              // INTERNAL USE ONLY: the set of lexErrorInfo objects created since the last cleanup
+
+    // INTERNAL USE: construct a suitable error info hash object instance for `parseError`.
+    constructLexErrorInfo: function lexer_constructLexErrorInfo(msg, recoverable) {
+        var pei = {
+            errStr: msg,
+            recoverable: recoverable,
+            text: this.match,           // This one MAY be empty; userland code should use the `upcomingInput` API to obtain more text which follows the 'lexer cursor position'...
+            token: null,
+            line: this.yylineno,
+            loc: this.yylloc,
+            yy: this.yy,
+            lexer: this,
+
+            // and make sure the error info doesn't stay due to potential
+            // ref cycle via userland code manipulations.
+            // These would otherwise all be memory leak opportunities!
+            //
+            // Note that only array and object references are nuked as those
+            // constitute the set of elements which can produce a cyclic ref.
+            // The rest of the members is kept intact as they are harmless.
+            destroy: function destructLexErrorInfo() {
+                // remove cyclic references added to error info:
+                // info.yy = null;
+                // info.lexer = null;
+                // ...
+                var rec = !!this.recoverable;
+                for (var key in this) {
+                    if (this.hasOwnProperty(key) && typeof key === 'object') {
+                        this[key] = undefined;
+                    }
+                }
+                this.recoverable = rec;
+            }
+        };
+        // track this instance so we can `destroy()` it once we deem it superfluous and ready for garbage collection!
+        this.__error_infos.push(pei);
+        return pei;
+    },
+
     parseError: function lexer_parseError(str, hash) {
         if (this.yy.parser && typeof this.yy.parser.parseError === 'function') {
             return this.yy.parser.parseError(str, hash) || this.ERROR;
@@ -1912,6 +1952,35 @@ var __objdef__ = {
         } else {
             throw new this.JisonLexerError(str);
         }
+    },
+
+    // final cleanup function for when we have completed lexing the input; 
+    // make it an API so that external code can use this one once userland
+    // code has decided it's time to destroy any lingering lexer error
+    // hash object instances and the like: this function helps to clean
+    // up these constructs, which *may* carry cyclic references which would
+    // otherwise prevent the instances from being properly and timely
+    // garbage-collected, i.e. this function helps prevent memory leaks!
+    cleanupAfterLex: function lexer_cleanupAfterLex(do_not_nuke_errorinfos) {
+        var rv;
+
+        // prevent lingering circular references from causing memory leaks:
+        this.setInput('', {});
+
+        // nuke the error hash info instances created during this run.
+        // Userland code must COPY any data/references
+        // in the error hash instance(s) it is more permanently interested in.
+        if (!do_not_nuke_errorinfos) {
+            for (var i = this.__error_infos.length - 1; i >= 0; i--) {
+                var el = this.__error_infos[i];
+                if (el && typeof el.destroy === 'function') {
+                    el.destroy();
+                }
+            }
+            this.__error_infos.length = 0;
+        }
+
+        return this;
     },
 
     // clear the lexer token context; intended for internal use only
@@ -2044,14 +2113,8 @@ var __objdef__ = {
             // when the parseError() call returns, we MUST ensure that the error is registered.
             // We accomplish this by signaling an 'error' token to be produced for the current
             // .lex() run.
-            this._signaled_error_token = (this.parseError('Lexical error on line ' + (this.yylineno + 1) + '. You can only invoke reject() in the lexer when the lexer is of the backtracking persuasion (options.backtrack_lexer = true).\n' + this.showPosition(), {
-                text: this.match,
-                token: null,
-                line: this.yylineno,
-                loc: this.yylloc,
-                lexer: this,
-                yy: this.yy
-            }) || this.ERROR);
+            var p = this.constructLexErrorInfo('Lexical error on line ' + (this.yylineno + 1) + '. You can only invoke reject() in the lexer when the lexer is of the backtracking persuasion (options.backtrack_lexer = true).\n' + this.showPosition(), false);
+            this._signaled_error_token = (this.parseError(p.errStr, p) || this.ERROR);
         }
         return this;
     },
@@ -2320,14 +2383,8 @@ var __objdef__ = {
             this.done = true;
             return this.EOF;
         } else {
-            token = this.parseError('Lexical error on line ' + (this.yylineno + 1) + '. Unrecognized text.\n' + this.showPosition(), {
-                text: this.match + this._input,
-                token: null,
-                line: this.yylineno,
-                loc: this.yylloc,
-                lexer: this,
-                yy: this.yy
-            }) || this.ERROR;
+            var p = this.constructLexErrorInfo('Lexical error on line ' + (this.yylineno + 1) + '. Unrecognized text.\n' + this.showPosition(), true);
+            token = (this.parseError(p.errStr, p) || this.ERROR);
             if (token === this.ERROR) {
                 // we can try to recover from a lexer error that parseError() did not 'recover' for us, by moving forward at least one character at a time:
                 if (!this.match.length) {
