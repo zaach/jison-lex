@@ -45,6 +45,10 @@ function prepareRules(dict, actions, caseHelper, tokens, startConditions, opts) 
     // Assure all options are camelCased:
     assert(typeof opts.options['case-insensitive'] === 'undefined');
 
+    if (!tokens) {
+        tokens = [];
+    }
+
     // Depending on the location within the regex we need different expansions of the macros:
     // one expansion for when a macro is *inside* a `[...]` and another expansion when a macro
     // is anywhere else in a regex:
@@ -115,12 +119,8 @@ function prepareRules(dict, actions, caseHelper, tokens, startConditions, opts) 
             rule[1] = String(rule[1]).replace(/^\s*function \(\)\s?\{/, '').replace(/\}\s*$/, '');
         }
         action = rule[1];
-        if (tokens && action.match(/return '(?:\\'|[^']+)+'/)) {
-            action = action.replace(/return '((?:\\'|[^']+)+)'/g, tokenNumberReplacement);
-        }
-        if (tokens && action.match(/return "(?:\\"|[^"]+)+"/)) {
-            action = action.replace(/return "((?:\\"|[^"]+)+)"/g, tokenNumberReplacement);
-        }
+        action = action.replace(/return '((?:\\'|[^']+)+)'/g, tokenNumberReplacement);
+        action = action.replace(/return "((?:\\"|[^"]+)+)"/g, tokenNumberReplacement);
 
         var code = ['\n/*! Conditions::'];
         code.push(postprocessComment(active_conditions));
