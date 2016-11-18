@@ -2287,7 +2287,6 @@ var __objdef__ = {
             return false;
         }
         if (this._input === '') {
-            this.clear();
             this.done = true;
             return this.EOF;
         } else {
