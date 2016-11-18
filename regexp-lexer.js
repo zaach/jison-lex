@@ -1901,7 +1901,8 @@ var __objdef__ = {
         this.yy = yy || this.yy || {};
         this._input = input || '';
         this.clear();
-        this._signaled_error_token = this.done = false;
+        this._signaled_error_token = false;
+        this.done = false;
         this.yylineno = 0;
         this.matched = '';
         this.conditionStack = ['INITIAL'];
