@@ -25,12 +25,11 @@ const WORDCHAR_SETSTR = 'A-Za-z0-9_';
 
 
 // HELPER FUNCTION: print the function in source code form, properly indented.
-function printFunctionSourceCode(f, indent_levels_to_strip_off) {
-    var s = String(f);
-    while (indent_levels_to_strip_off-- > 0) {
-        s = s.replace(/^    /gm, '');
-    }
-    return s;
+function printFunctionSourceCode(f) {
+    return String(f).replace(/^    /gm, '');
+}
+function printFunctionSourceCodeContainer(f) {
+    return String(f).replace(/^    /gm, '').replace(/^    /gm, '').replace(/function [^\{]+\{/, '').replace(/\}$/, '');
 }
 
 
@@ -1711,8 +1710,8 @@ function generateErrorClass() {
         '// http://stackoverflow.com/questions/1382107/whats-a-good-way-to-extend-error-in-javascript/#35881508',
         '// but we keep the prototype.constructor and prototype.name assignment lines too for compatibility',
         '// with userland code which might access the derived class in a \'classic\' way.',
-        printFunctionSourceCode(JisonLexerError, 1),
-        printFunctionSourceCode(__extra_code__, 2).replace(/function [^\{]+\{/, '').replace(/\}$/, ''),
+        printFunctionSourceCode(JisonLexerError),
+        printFunctionSourceCodeContainer(__extra_code__),
         '',
     ];
 
