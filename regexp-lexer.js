@@ -1880,7 +1880,9 @@ var __objdef__ = {
 
     parseError: function lexer_parseError(str, hash) {
         if (this.yy.parser && typeof this.yy.parser.parseError === 'function') {
-            return this.yy.parser.parseError(str, hash) || this.ERROR;
+            return this.yy.parser.parseError.call(this, str, hash) || this.ERROR;
+        } else if (typeof this.yy.parseError === 'function') {
+            return this.yy.parseError.call(this, str, hash) || this.ERROR;
         } else {
             throw new this.JisonLexerError(str);
         }
