@@ -1866,7 +1866,6 @@ function RegExpLexer(dict, input, tokens) {
         throw ex;
     });
 
-    lexer.yy = {};
     lexer.setInput(input);
 
     lexer.generate = function () {
@@ -1907,7 +1906,7 @@ var __objdef__ = {
 
     parseError: function lexer_parseError(str, hash) {
         if (this.yy.parser && typeof this.yy.parser.parseError === 'function') {
-            return this.yy.parser.parseError.call(this, str, hash) || this.ERROR;
+            return this.yy.parser.parseError(str, hash) || this.ERROR;
         } else if (typeof this.yy.parseError === 'function') {
             return this.yy.parseError.call(this, str, hash) || this.ERROR;
         } else {
@@ -1928,6 +1927,7 @@ var __objdef__ = {
     // resets the lexer, sets new input
     setInput: function lexer_setInput(input, yy) {
         this.yy = yy || this.yy || {};
+
         this._input = input || '';
         this.clear();
         this._signaled_error_token = false;
@@ -2049,7 +2049,8 @@ var __objdef__ = {
                 token: null,
                 line: this.yylineno,
                 loc: this.yylloc,
-                lexer: this
+                lexer: this,
+                yy: this.yy
             }) || this.ERROR);
         }
         return this;
@@ -2324,7 +2325,8 @@ var __objdef__ = {
                 token: null,
                 line: this.yylineno,
                 loc: this.yylloc,
-                lexer: this
+                lexer: this,
+                yy: this.yy
             }) || this.ERROR;
             if (token === this.ERROR) {
                 // we can try to recover from a lexer error that parseError() did not 'recover' for us, by moving forward at least one character at a time:
