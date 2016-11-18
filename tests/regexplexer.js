@@ -125,6 +125,29 @@ exports["test unrecognized char"] = function() {
     assert.throws(function(){ lexer.lex(); }, "bad char");
 };
 
+exports["test if lexer continues correctly after having encountered an unrecognized char"] = function() {
+    var dict = {
+        rules: [
+           ["x", "return 'X';" ],
+           ["y", "return 'Y';" ],
+           ["$", "return 'EOF';" ]
+       ]
+    };
+
+    var input = "xa";
+    var err = 0;
+
+    var lexer = new RegExpLexer(dict, input);
+    lexer.parseError = function (str) {
+      err++;
+    }
+    assert.equal(lexer.lex(), "X");
+    assert.equal(err, 0);
+    assert.equal(lexer.lex(), lexer.ERROR /* 2 */);
+    assert.equal(err, 1);
+    assert.equal(lexer.lex(), "EOF");
+};
+
 exports["test macro"] = function() {
     var dict = {
         macros: {
