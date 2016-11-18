@@ -25,8 +25,12 @@ const WORDCHAR_SETSTR = 'A-Za-z0-9_';
 
 
 // HELPER FUNCTION: print the function in source code form, properly indented.
-function printFunctionSourceCode(f) {
-    return String(f).replace(/^    /gm, '');
+function printFunctionSourceCode(f, indent_levels_to_strip_off) {
+    var s = String(f);
+    while (indent_levels_to_strip_off-- > 0) {
+        s = s.replace(/^    /gm, '');
+    }
+    return s;
 }
 
 
@@ -1707,8 +1711,8 @@ function generateErrorClass() {
         '// http://stackoverflow.com/questions/1382107/whats-a-good-way-to-extend-error-in-javascript/#35881508',
         '// but we keep the prototype.constructor and prototype.name assignment lines too for compatibility',
         '// with userland code which might access the derived class in a \'classic\' way.',
-        String(JisonLexerError).replace(/^    /gm, ''),
-        printFunctionSourceCode(__extra_code__).replace(/^    /gm, '').replace(/function [^\{]+\{/, '').replace(/\}$/, ''),
+        printFunctionSourceCode(JisonLexerError, 1),
+        printFunctionSourceCode(__extra_code__, 2).replace(/function [^\{]+\{/, '').replace(/\}$/, ''),
         '',
     ];
 
@@ -1910,7 +1914,7 @@ var __objdef__ = {
     constructLexErrorInfo: function lexer_constructLexErrorInfo(msg, recoverable) {
         var pei = {
             errStr: msg,
-            recoverable: recoverable,
+            recoverable: !!recoverable,
             text: this.match,           // This one MAY be empty; userland code should use the `upcomingInput` API to obtain more text which follows the 'lexer cursor position'...
             token: null,
             line: this.yylineno,
@@ -2383,7 +2387,7 @@ var __objdef__ = {
             this.done = true;
             return this.EOF;
         } else {
-            var p = this.constructLexErrorInfo('Lexical error on line ' + (this.yylineno + 1) + '. Unrecognized text.\n' + this.showPosition(), true);
+            var p = this.constructLexErrorInfo('Lexical error on line ' + (this.yylineno + 1) + '. Unrecognized text.\n' + this.showPosition(), this.options.lexer_errors_are_recoverable);
             token = (this.parseError(p.errStr, p) || this.ERROR);
             if (token === this.ERROR) {
                 // we can try to recover from a lexer error that parseError() did not 'recover' for us, by moving forward at least one character at a time:
