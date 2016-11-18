@@ -81,7 +81,11 @@ exports["test set yy"] = function() {
 
     var lexer = new RegExpLexer(dict);
     lexer.setInput(input, { x: 'EX' });
-    assert.equal(lexer.lex(), "EX");
+    assert.equal(lexer.lex(), 'EX');
+    assert.equal(lexer.lex(), 'EX');
+    assert.equal(lexer.lex(), 'Y');
+    assert.equal(lexer.lex(), 'EX');
+    assert.equal(lexer.lex(), 'EOF');
 };
 
 exports["test set input after"] = function() {
@@ -118,7 +122,7 @@ exports["test unrecognized char"] = function() {
 
     var lexer = new RegExpLexer(dict, input);
     assert.equal(lexer.lex(), "X");
-    assert.throws(function(){lexer.lex()}, "bad char");
+    assert.throws(function(){ lexer.lex(); }, "bad char");
 };
 
 exports["test macro"] = function() {
@@ -2094,3 +2098,38 @@ exports["test nested macro expansion in regex set atoms with negating inner set"
     assert.equal(lexer.lex() + '=' + lexer.match, "Y=E");
     assert.equal(lexer.lex(), lexer.EOF);
 };
+
+exports["custom '<<EOF>>' lexer rule must only fire once for end-of-input"] = function() {
+    var dict = [
+      "%%",
+      "'x'     {return 'X';}",
+      "<<EOF>> {return 'CUSTOM_EOF';}",
+      ".       {return yytext;}"
+    ].join('\n');
+
+    var input = "x<<EOF>>";
+
+    var lexer = new RegExpLexer(dict);
+    lexer.setInput(input);
+
+    assert.equal(lexer.lex(), "X");      
+    // side note: this particular input is also constructed to test/ensure
+    // that the lexer does not inadvertedly match the literal '<<EOF>>'
+    // input string with the *special* <<EOF>> lexer rule token!
+    //
+    // In other words: if this next lex() call fails, we know we have a
+    // deep b0rk in the lex compiler (rule parser/recognizer)! 
+    assert.equal(lexer.lex(), "<");
+    assert.equal(lexer.lex(), "<");
+    assert.equal(lexer.lex(), "E");
+    assert.equal(lexer.lex(), "O");
+    assert.equal(lexer.lex(), "F");
+    assert.equal(lexer.lex(), ">");
+    assert.equal(lexer.lex(), ">");
+    assert.equal(lexer.lex(), "CUSTOM_EOF");
+    assert.equal(lexer.lex(), lexer.EOF);
+    assert.equal(lexer.lex(), lexer.EOF);
+    assert.equal(lexer.lex(), lexer.EOF);
+    assert.equal(lexer.lex(), lexer.EOF);
+};
+
