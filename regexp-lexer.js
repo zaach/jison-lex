@@ -1901,6 +1901,24 @@ function RegExpLexer(dict, input, tokens) {
     return lexer;
 }
 
+// code stripping performance test for very simple grammar:
+// 
+// - removing backtracking parser code branches:                    730K -> 750K rounds
+// - removing all location info tracking: yylineno, yylloc, etc.:   750K -> 900K rounds
+// - no `yyleng`:                                                   900K -> 905K rounds
+// - no `this.done` as we cannot have a NULL `_input` anymore:      905K -> 930K rounds
+// - `simpleCaseActionClusters` as array instead of hash object:    930K -> 940K rounds
+// - lexers which have only return stmts, i.e. only a 
+//   `simpleCaseActionClusters` lookup table to produce 
+//   lexer tokens: *inline* the `performAction` call:               940K -> 950K rounds
+// - given all the above, you can *inline* what's left of 
+//   `lexer_next()`:                                                950K -> 955K rounds (? this stuff becomes hard to measure; inaccuracy abounds!)
+//   
+// Total gain when we forget about very minor (and tough to nail) *inlining* `lexer_next()` gains:
+// 
+//     730 -> 950  ~ 30% performance gain.
+// 
+
 // As a function can be reproduced in source-code form by any JavaScript engine, we're going to wrap this chunk
 // of code in a function so that we can easily get it including it comments, etc.:
 function getRegExpLexerPrototype() {
