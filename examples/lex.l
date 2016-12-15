@@ -44,8 +44,8 @@ BR                                      \r\n|\n|\r
 <trail>.*{BR}+                        this.begin('rules');
 
 <indented>"{"                         yy.depth = 0; this.begin('action'); return '{';
-<indented>"%{"(.|{BR})*?"%}"          this.begin('trail'); yytext = yytext.substr(2, yytext.length - 4); return 'ACTION';
-"%{"(.|{BR})*?"%}"                    yytext = yytext.substr(2, yytext.length - 4); return 'ACTION';
+<indented>"%{"(.|{BR})*?"%}"          this.begin('trail'); yytext = yytext.substr(2, yyleng - 4); return 'ACTION';
+"%{"(.|{BR})*?"%}"                    yytext = yytext.substr(2, yyleng - 4); return 'ACTION';
 <indented>.+                          this.begin('rules'); return 'ACTION';
 
 "/*"(.|\n|\r)*?"*/"             /* ignore */
