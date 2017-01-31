@@ -5,6 +5,7 @@ prep: npm-install
 
 npm-install:
 	npm install
+	npm install --only=dev
 
 build:
 

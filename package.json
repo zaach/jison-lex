@@ -7,7 +7,7 @@
   "name": "jison-lex",
   "description": "lexical analyzer generator used by jison",
   "license": "MIT",
-  "version": "0.3.4-166",
+  "version": "0.3.4-167",
   "keywords": [
     "jison",
     "parser",
@@ -30,9 +30,9 @@
     "node": ">=4.0"
   },
   "dependencies": {
-    "lex-parser": "GerHobbelt/lex-parser#master",
-    "nomnom": "GerHobbelt/nomnom#master",
-    "xregexp": "GerHobbelt/xregexp#master"
+    "lex-parser": "github:GerHobbelt/lex-parser#master",
+    "nomnom": "github:GerHobbelt/nomnom#master",
+    "xregexp": "github:GerHobbelt/xregexp#master"
   },
   "devDependencies": {
     "test": "0.6.0"
