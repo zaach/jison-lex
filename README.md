@@ -1,5 +1,9 @@
 # jison-lex
 
+
+[![build status](https://secure.travis-ci.org/GerHobbelt/jison-lex.png)](http://travis-ci.org/GerHobbelt/jison-lex)
+
+
 A lexical analyzer generator used by [jison](http://jison.org). It takes a lexical grammar definition (either in JSON or Bison's lexical grammar format) and outputs a JavaScript lexer.
 
 
