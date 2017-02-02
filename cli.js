@@ -8,7 +8,8 @@ var lexParser = require('lex-parser');
 var RegExpLexer = require('./regexp-lexer.js');
 
 
-var opts = require("nomnom")
+var opts = require('nomnom')
+  .unknownOptionTreatment(false)              // do not accept unknown options!
   .script('jison-lex')
   .option('file', {
     flag: true,
@@ -38,7 +39,7 @@ var opts = require("nomnom")
 exports.main = function (opts) {
     if (opts.file) {
         var raw = fs.readFileSync(path.normalize(opts.file), 'utf8'),
-            name = path.basename((opts.outfile||opts.file)).replace(/\..*$/g,'');
+            name = path.basename((opts.outfile||opts.file)).replace(/\..*$/g, '');
 
         fs.writeFileSync(opts.outfile||(name + '.js'), processGrammar(raw, name));
     } else {
@@ -87,5 +88,7 @@ function readin (cb) {
     });
 }
 
-if (require.main === module)
+if (require.main === module) {
     exports.main(opts.parse());
+}
+
