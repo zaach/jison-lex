@@ -25,7 +25,8 @@ var opts = require('nomnom')
     abbr: 't',
     default: 'commonjs',
     metavar: 'TYPE',
-    help: 'The type of module to generate (commonjs, js)'
+    choices: ['commonjs', 'amd', 'js', 'es'],
+    help: 'The type of module to generate (commonjs, amd, es, js)'
   })
   .option('version', {
     abbr: 'V',
