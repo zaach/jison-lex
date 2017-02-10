@@ -2499,6 +2499,13 @@ var __objdef__ = {
             // invoke the `lex()` token-producing API and related APIs, hence caching the set for direct access helps
             // speed up those activities a tiny bit.
             spec = this.__currentRuleSet__ = this._currentRules();
+            // Check whether a *sane* condition has been pushed before: this makes the lexer robust against
+            // user-programmer bugs such as https://github.com/zaach/jison-lex/issues/19
+            if (!spec || !spec.rules) {
+	            var p = this.constructLexErrorInfo('Internal lexer engine error on line ' + (this.yylineno + 1) + '. The lex grammar programmer pushed a non-existing condition name "' + this.topState() + '"; this is a fatal error and should be reported to the application programmer team!\n', false);
+	            // produce one 'error' token until this situation has been resolved, most probably by parse termination!
+	            return (this.parseError(p.errStr, p) || this.ERROR);
+            }
         }
 
         var rule_ids = spec.rules;
