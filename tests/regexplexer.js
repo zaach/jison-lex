@@ -123,7 +123,7 @@ describe("Lexer Kernel", function () {
 
     var lexer = new RegExpLexer(dict, input);
     assert.equal(lexer.lex(), "X");
-    assert.throws(function(){ lexer.lex(); }, "bad char");
+    assert.throws(function(){ lexer.lex(); }, /JisonLexerError:.*?Unrecognized text/, "bad char");
   });
 
   it("test if lexer continues correctly after having encountered an unrecognized char", function() {
