@@ -10,7 +10,7 @@ npm-install:
 build:
 
 test:
-	node tests/all-tests.js
+	node_modules/.bin/mocha tests/
 
 
 # increment the XXX <prelease> number in the package.json file: version <major>.<minor>.<patch>-<prelease>

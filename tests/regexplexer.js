@@ -1,5 +1,5 @@
+var assert = require("chai").assert;
 var RegExpLexer = require("../regexp-lexer");
-var assert = require("assert");
 var XRegExp = require("xregexp");
 
 function re2set(re) {
@@ -8,7 +8,8 @@ function re2set(re) {
   return xs.substr(2, xs.length - 4);   // strip off the wrapping: /[...]/
 }
 
-exports["test basic matchers"] = function() {
+describe("Lexer Kernel", function () {
+  it("test basic matchers", function() {
     var dict = {
         rules: [
            ["x", "return 'X';" ],
@@ -25,9 +26,9 @@ exports["test basic matchers"] = function() {
     assert.equal(lexer.lex(), "Y");
     assert.equal(lexer.lex(), "X");
     assert.equal(lexer.lex(), "EOF");
-};
+  });
 
-exports["test lexer error class inheritance chain"] = function() {
+  it("test lexer error class inheritance chain", function() {
     var dict = {
         rules: [
            ["x", "return 'X';" ],
@@ -66,9 +67,9 @@ exports["test lexer error class inheritance chain"] = function() {
     assert(t3.message === 'a');
     assert(t2.toString() === 'Error: a');
     assert(t3.toString() === 'JisonLexerError: a');
-};
+  });
 
-exports["test set yy"] = function() {
+  it("test set yy", function() {
     var dict = {
         rules: [
            ["x", "return yy.x;" ],
@@ -86,9 +87,9 @@ exports["test set yy"] = function() {
     assert.equal(lexer.lex(), 'Y');
     assert.equal(lexer.lex(), 'EX');
     assert.equal(lexer.lex(), 'EOF');
-};
+  });
 
-exports["test set input after"] = function() {
+  it("test set input after", function() {
     var dict = {
         rules: [
            ["x", "return 'X';" ],
@@ -107,9 +108,9 @@ exports["test set input after"] = function() {
     assert.equal(lexer.lex(), "Y");
     assert.equal(lexer.lex(), "X");
     assert.equal(lexer.lex(), "EOF");
-};
+  });
 
-exports["test unrecognized char"] = function() {
+  it("test unrecognized char", function() {
     var dict = {
         rules: [
            ["x", "return 'X';" ],
@@ -123,9 +124,9 @@ exports["test unrecognized char"] = function() {
     var lexer = new RegExpLexer(dict, input);
     assert.equal(lexer.lex(), "X");
     assert.throws(function(){ lexer.lex(); }, "bad char");
-};
+  });
 
-exports["test if lexer continues correctly after having encountered an unrecognized char"] = function() {
+  it("test if lexer continues correctly after having encountered an unrecognized char", function() {
     var dict = {
         rules: [
            ["x", "return 'X';" ],
@@ -146,9 +147,9 @@ exports["test if lexer continues correctly after having encountered an unrecogni
     assert.equal(lexer.lex(), lexer.ERROR /* 2 */);
     assert.equal(err, 1);
     assert.equal(lexer.lex(), "EOF");
-};
+  });
 
-exports["test macro"] = function() {
+  it("test macro", function() {
     var dict = {
         macros: {
             "digit": "[0-9]"
@@ -169,9 +170,9 @@ exports["test macro"] = function() {
     assert.equal(lexer.lex(), "Y");
     assert.equal(lexer.lex(), "NAT");
     assert.equal(lexer.lex(), "EOF");
-};
+  });
 
-exports["test macro precedence"] = function() {
+  it("test macro precedence", function() {
     var dict = {
         macros: {
             "hex": "[0-9]|[a-f]"
@@ -194,9 +195,9 @@ exports["test macro precedence"] = function() {
     assert.equal(lexer.lex(), "-");
     assert.equal(lexer.lex(), "HEX");
     assert.equal(lexer.lex(), "EOF");
-};
+  });
 
-exports["test nested macros"] = function () {
+  it("test nested macros", function () {
     var dict = {
         macros: {
             "digit": "[0-9]",
@@ -223,9 +224,9 @@ exports["test nested macros"] = function () {
     assert.equal(lexer.lex(), "Y");
     assert.equal(lexer.lex(), "NNN");
     assert.equal(lexer.lex(), "EOF");
-};
+  });
 
-exports["test nested macro precedence"] = function() {
+  it("test nested macro precedence", function() {
     var dict = {
         macros: {
             "hex": "[0-9]|[a-f]",
@@ -249,9 +250,9 @@ exports["test nested macro precedence"] = function() {
     assert.equal(lexer.lex(), "-");
     assert.equal(lexer.lex(), "HEX");
     assert.equal(lexer.lex(), "EOF");
-};
+  });
 
-exports["test action include"] = function() {
+  it("test action include", function() {
     var dict = {
         rules: [
            ["x", "return included ? 'Y' : 'N';" ],
@@ -265,9 +266,9 @@ exports["test action include"] = function() {
     var lexer = new RegExpLexer(dict, input);
     assert.equal(lexer.lex(), "Y");
     assert.equal(lexer.lex(), "EOF");
-};
+  });
 
-exports["test ignored"] = function() {
+  it("test ignored", function() {
     var dict = {
         rules: [
            ["x", "return 'X';" ],
@@ -285,9 +286,9 @@ exports["test ignored"] = function() {
     assert.equal(lexer.lex(), "Y");
     assert.equal(lexer.lex(), "X");
     assert.equal(lexer.lex(), "EOF");
-};
+  });
 
-exports["test disambiguate"] = function() {
+  it("test disambiguate", function() {
     var dict = {
         rules: [
            ["for\\b", "return 'FOR';" ],
@@ -306,9 +307,9 @@ exports["test disambiguate"] = function() {
     assert.equal(lexer.lex(), "FOR");
     assert.equal(lexer.lex(), "FOR");
     assert.equal(lexer.lex(), "EOF");
-};
+  });
 
-exports["test yytext overwrite"] = function() {
+  it("test yytext overwrite", function() {
     var dict = {
         rules: [
            ["x", "yytext = 'hi der'; return 'X';" ]
@@ -320,9 +321,9 @@ exports["test yytext overwrite"] = function() {
     var lexer = new RegExpLexer(dict, input);
     lexer.lex();
     assert.equal(lexer.yytext, "hi der");
-};
+  });
 
-exports["test yylineno with test_match"] = function() {
+  it("test yylineno with test_match", function() {
     var dict = {
         rules: [
            ["\\s+", "/* skip whitespace */" ],
@@ -341,9 +342,9 @@ exports["test yylineno with test_match"] = function() {
     assert.equal(lexer.yylineno, 1);
     assert.equal(lexer.lex(), "x");
     assert.equal(lexer.yylineno, 4);
-};
+  });
 
-exports["test yylineno with input"] = function() {
+  it("test yylineno with input", function() {
     var dict = {
         rules: [
            ["\\s+", "/* skip whitespace */" ],
@@ -381,10 +382,10 @@ exports["test yylineno with input"] = function() {
     assert.equal(lexer.yylineno, 1);
     assert.equal(lexer.input(), "b");
     assert.equal(lexer.yylineno, 1);
-};
+  });
 
 
-exports["test yylloc, yyleng, and other lexer token parameters"] = function() {
+  it("test yylloc, yyleng, and other lexer token parameters", function() {
     var dict = {
         rules: [
            ["\\s+", "/* skip whitespace */" ],
@@ -447,10 +448,10 @@ exports["test yylloc, yyleng, and other lexer token parameters"] = function() {
     assert.equal(lexer.yylloc.last_line, 6);
     assert.equal(lexer.yylloc.first_column, 0);
     assert.equal(lexer.yylloc.last_column, 4);
-};
+  });
 
 
-exports["test yylloc with %options ranges"] = function() {
+  it("test yylloc with %options ranges", function() {
     var dict = {
         options: {
           ranges: true
@@ -526,9 +527,9 @@ exports["test yylloc with %options ranges"] = function() {
     assert.equal(lexer.yylloc.last_column, 4);
     assert.equal(lexer.yylloc.range[0], 9);
     assert.equal(lexer.yylloc.range[1], 13);
-};
+  });
 
-exports["test more()"] = function() {
+  it("test more()", function() {
     var dict = {
         rules: [
            ["x", "return 'X';" ],
@@ -551,9 +552,9 @@ exports["test more()"] = function() {
     assert.equal(lexer.lex(), "STRING");
     assert.equal(lexer.lex(), "X");
     assert.equal(lexer.lex(), "EOF");
-};
+  });
 
-exports["test defined token returns"] = function() {
+  it("test defined token returns", function() {
     var tokens = {"2":"X", "3":"Y", "4":"EOF"};
     var dict = {
         rules: [
@@ -572,9 +573,9 @@ exports["test defined token returns"] = function() {
     assert.equal(lexer.lex(), 3);
     assert.equal(lexer.lex(), 2);
     assert.equal(lexer.lex(), 4);
-};
+  });
 
-exports["test module generator from constructor"] = function() {
+  it("test module generator from constructor", function() {
     var dict = {
         rules: [
            ["x", "return 'X';" ],
@@ -594,9 +595,9 @@ exports["test module generator from constructor"] = function() {
     assert.equal(lexer.lex(), "Y");
     assert.equal(lexer.lex(), "X");
     assert.equal(lexer.lex(), "EOF");
-};
+  });
 
-exports["test module generator"] = function() {
+  it("test module generator", function() {
     var dict = {
         rules: [
            ["x", "return 'X';" ],
@@ -617,9 +618,9 @@ exports["test module generator"] = function() {
     assert.equal(lexer.lex(), "Y");
     assert.equal(lexer.lex(), "X");
     assert.equal(lexer.lex(), "EOF");
-};
+  });
 
-exports["test generator with more complex lexer"] = function() {
+  it("test generator with more complex lexer", function() {
     var dict = {
         rules: [
            ["x", "return 'X';" ],
@@ -646,9 +647,9 @@ exports["test generator with more complex lexer"] = function() {
     assert.equal(lexer.lex(), "STRING");
     assert.equal(lexer.lex(), "X");
     assert.equal(lexer.lex(), "EOF");
-};
+  });
 
-exports["test commonjs module generator"] = function() {
+  it("test commonjs module generator", function() {
     var dict = {
         rules: [
            ["x", "return 'X';" ],
@@ -670,9 +671,9 @@ exports["test commonjs module generator"] = function() {
     assert.equal(exports.lex(), "Y");
     assert.equal(exports.lex(), "X");
     assert.equal(exports.lex(), "EOF");
-};
+  });
 
-exports["test amd module generator"] = function() {
+  it("test amd module generator", function() {
     var dict = {
         rules: [
            ["x", "return 'X';" ],
@@ -699,11 +700,11 @@ exports["test amd module generator"] = function() {
     assert.equal(lexer.lex(), "Y");
     assert.equal(lexer.lex(), "X");
     assert.equal(lexer.lex(), "EOF");
-};
+  });
 
-exports["test DJ lexer"] = function() {
+  it("test DJ lexer", function() {
     var dict = {
-    "lex": {
+      "lex": {
         "macros": {
             "digit": "[0-9]",
             "id": "[a-zA-Z_][a-zA-Z0-9_]*"
@@ -744,8 +745,8 @@ exports["test DJ lexer"] = function() {
             [".",          "print('Illegal character'); throw 'Illegal character';"],
             ["$",          "return 'ENDOFFILE';"]
         ]
-    }
-};
+      }
+    };
 
     var input = "class Node extends Object { \
                       var nat value    var nat value;\
@@ -807,9 +808,9 @@ exports["test DJ lexer"] = function() {
     while (tok = lexer.lex(), tok !== 1) {
         assert.equal(typeof tok, "string");
     }
-};
+  });
 
-exports["test instantiation from string"] = function() {
+  it("test instantiation from string", function() {
     var dict = "%%\n'x' {return 'X';}\n'y' {return 'Y';}\n<<EOF>> {return 'EOF';}";
 
     var input = "x";
@@ -819,9 +820,9 @@ exports["test instantiation from string"] = function() {
 
     assert.equal(lexer.lex(), "X");
     assert.equal(lexer.lex(), "EOF");
-};
+  });
 
-exports["test inclusive start conditions"] = function() {
+  it("test inclusive start conditions", function() {
     var dict = {
         startConditions: {
             "TEST": 0,
@@ -845,9 +846,9 @@ exports["test inclusive start conditions"] = function() {
     assert.equal(lexer.lex(), "TY");
     assert.equal(lexer.lex(), "Y");
     assert.equal(lexer.lex(), "EOF");
-};
+  });
 
-exports["test exclusive start conditions"] = function() {
+  it("test exclusive start conditions", function() {
     var dict = {
         startConditions: {
             "EAT": 1,
@@ -870,9 +871,9 @@ exports["test exclusive start conditions"] = function() {
     assert.equal(lexer.lex(), "Y");
     assert.equal(lexer.lex(), "Y");
     assert.equal(lexer.lex(), "EOF");
-};
+  });
 
-exports["test pop start condition stack"] = function() {
+  it("test pop start condition stack", function() {
     var dict = {
         startConditions: {
             "EAT": 1,
@@ -895,10 +896,10 @@ exports["test pop start condition stack"] = function() {
     assert.equal(lexer.lex(), "Y");
     assert.equal(lexer.lex(), "Y");
     assert.equal(lexer.lex(), "EOF");
-};
+  });
 
 
-exports["test star start condition"] = function() {
+  it("test star start condition", function() {
     var dict = {
         startConditions: {
             "EAT": 1,
@@ -919,9 +920,9 @@ exports["test star start condition"] = function() {
     assert.equal(lexer.lex(), "X");
     assert.equal(lexer.lex(), "Y");
     assert.equal(lexer.lex(), "EOF");
-};
+  });
 
-exports["test start condition constants"] = function() {
+  it("test start condition constants", function() {
     var dict = {
         startConditions: {
             "EAT": 1,
@@ -943,9 +944,9 @@ exports["test start condition constants"] = function() {
     assert.equal(lexer.lex(), "Y");
     assert.equal(lexer.lex(), "E");
     assert.equal(lexer.lex(), "EOF");
-};
+  });
 
-exports["test start condition & warning"] = function() {
+  it("test start condition & warning", function() {
     var dict = {
         startConditions: {
             "INITIAL": 0,
@@ -967,9 +968,9 @@ exports["test start condition & warning"] = function() {
     assert.equal(lexer.lex(), "Y");
     assert.equal(lexer.lex(), "E");
     assert.equal(lexer.lex(), "EOF");
-};
+  });
 
-exports["test unicode encoding"] = function() {
+  it("test unicode encoding", function() {
     var dict = {
         rules: [
             ["\\u2713", "return 'CHECK';" ],
@@ -985,9 +986,9 @@ exports["test unicode encoding"] = function() {
     assert.equal(lexer.lex(), "CHECK");
     assert.equal(lexer.lex(), "PI");
     assert.equal(lexer.lex(), "Y");
-};
+  });
 
-exports["test unicode"] = function() {
+  it("test unicode", function() {
     var dict = {
         rules: [
             ["π", "return 'PI';" ],
@@ -1001,9 +1002,9 @@ exports["test unicode"] = function() {
 
     assert.equal(lexer.lex(), "PI");
     assert.equal(lexer.lex(), "Y");
-};
+  });
 
-exports["test longest match returns"] = function() {
+  it("test longest match returns", function() {
     var dict = {
         rules: [
             [".", "return 'DOT';" ],
@@ -1018,9 +1019,9 @@ exports["test longest match returns"] = function() {
 
     assert.equal(lexer.lex(), "CAT");
     assert.equal(lexer.lex(), "DOT");
-};
+  });
 
-exports["test case insensitivity"] = function() {
+  it("test case insensitivity", function() {
     var dict = {
         rules: [
             ["cat", "return 'CAT';" ]
@@ -1033,9 +1034,9 @@ exports["test case insensitivity"] = function() {
     lexer.setInput(input);
 
     assert.equal(lexer.lex(), "CAT");
-};
+  });
 
-exports["test camelCased json options"] = function() {
+  it("test camelCased json options", function() {
     var dict = {
         rules: [
             ["cat", "return 'CAT';" ]
@@ -1050,9 +1051,9 @@ exports["test camelCased json options"] = function() {
     lexer.setInput(input);
 
     assert.equal(lexer.lex(), "CAT");
-};
+  });
 
-exports["test less"] = function() {
+  it("test less", function() {
     var dict = {
         rules: [
             ["cat", "this.less(2); return 'CAT';" ],
@@ -1066,9 +1067,9 @@ exports["test less"] = function() {
 
     assert.equal(lexer.lex(), "CAT");
     assert.equal(lexer.lex(), "T");
-};
+  });
 
-exports["test EOF unput"] = function() {
+  it("test EOF unput", function() {
     var dict = {
         startConditions: {
             "UN": 1,
@@ -1088,9 +1089,9 @@ exports["test EOF unput"] = function() {
     assert.equal(lexer.lex(), "U");
     assert.equal(lexer.lex(), "X");
     assert.equal(lexer.lex(), "EOF");
-};
+  });
 
-exports["test flex mode default rule"] = function() {
+  it("test flex mode default rule", function() {
     var dict = {
         rules: [
             ["x", "return 'X';" ]
@@ -1104,9 +1105,9 @@ exports["test flex mode default rule"] = function() {
 
     assert.equal(lexer.lex(), "X");
     assert.equal(lexer.lex(), "X");
-};
+  });
 
-exports["test pipe precedence"] = function() {
+  it("test pipe precedence", function() {
     var dict = {
         rules: [
             ["x|y", "return 'X_Y';" ],
@@ -1121,9 +1122,9 @@ exports["test pipe precedence"] = function() {
     assert.equal(lexer.lex(), "X_Y");
     assert.equal(lexer.lex(), "N");
     assert.equal(lexer.lex(), "X_Y");
-};
+  });
 
-exports["test ranges"] = function() {
+  it("test ranges", function() {
     var dict = {
         rules: [
             ["x+", "return 'X';" ],
@@ -1138,9 +1139,9 @@ exports["test ranges"] = function() {
 
     assert.equal(lexer.lex(), "X");
     assert.deepEqual(lexer.yylloc.range, [0, 3]);
-};
+  });
 
-exports["test unput location"] = function() {
+  it("test unput location", function() {
     var dict = {
         rules: [
             ["x+", "return 'X';" ],
@@ -1182,9 +1183,9 @@ exports["test unput location"] = function() {
                                     last_column: 1,
                                     range: [5, 6]});
 
-};
+  });
 
-exports["test unput location again"] = function() {
+  it("test unput location again", function() {
     var dict = {
         rules: [
             ["x+", "return 'X';" ],
@@ -1226,9 +1227,9 @@ exports["test unput location again"] = function() {
                                     last_column: 1,
                                     range: [7, 8]});
 
-};
+  });
 
-exports["test backtracking lexer reject() method"] = function() {
+  it("test backtracking lexer reject() method", function() {
     var dict = {
         rules: [
             ["[A-Z]+([0-9]+)", "if (this.matches[1].length) this.reject(); else return 'ID';" ],
@@ -1244,9 +1245,9 @@ exports["test backtracking lexer reject() method"] = function() {
 
     assert.equal(lexer.lex(), "WORD");
     assert.equal(lexer.lex(), "NUM");
-};
+  });
 
-exports["test lexer reject() exception when not in backtracking mode"] = function() {
+  it("test lexer reject() exception when not in backtracking mode", function() {
     var dict = {
         rules: [
             ["[A-Z]+([0-9]+)", "if (this.matches[1].length) this.reject(); else return 'ID';" ],
@@ -1266,9 +1267,9 @@ exports["test lexer reject() exception when not in backtracking mode"] = functio
     function(err) {
       return (err instanceof Error) && /You can only invoke reject/.test(err);
     });
-};
+  });
 
-exports["test yytext state after unput"] = function() {
+  it("test yytext state after unput", function() {
     var dict = {
         rules: [
             ["cat4", "this.unput('4'); return 'CAT';" ],
@@ -1286,9 +1287,9 @@ exports["test yytext state after unput"] = function() {
     assert.equal(lexer.yytext, "cat");
     assert.equal(lexer.lex(), "NUMBER");
     assert.equal(lexer.lex(), "EOF");
-};
+  });
 
-exports["test custom parseError handler"] = function() {
+  it("test custom parseError handler", function() {
     var dict = {
         rules: [
            ["x", "return 't';" ]
@@ -1328,9 +1329,9 @@ exports["test custom parseError handler"] = function() {
     assert.equal(lexer.yytext, "");
     assert.equal(lexer.lex(), lexer.EOF);
     assert.equal(lexer.yytext, "");
-};
+  });
 
-exports["test custom parseError handler which produces a replacement token"] = function() {
+  it("test custom parseError handler which produces a replacement token", function() {
     var dict = {
         rules: [
            ["x", "return 't';" ]
@@ -1374,9 +1375,9 @@ exports["test custom parseError handler which produces a replacement token"] = f
     assert.equal(lexer.yytext, "");
     assert.equal(lexer.lex(), lexer.EOF);
     assert.equal(lexer.yytext, "");
-};
+  });
 
-exports["test custom pre and post handlers"] = function() {
+  it("test custom pre and post handlers", function() {
     var dict = {
         options: {
           pre_lex: function () {
@@ -1442,9 +1443,9 @@ exports["test custom pre and post handlers"] = function() {
     assert.equal(lexer.lex(), "a:1");
     assert.equal(lexer.yytext, "");
     assert.equal(counter, 36);
-};
+  });
 
-exports["test live replacement of custom pre and post handlers"] = function() {
+  it("test live replacement of custom pre and post handlers", function() {
     var dict = {
         options: {
           pre_lex: function () {
@@ -1511,9 +1512,9 @@ exports["test live replacement of custom pre and post handlers"] = function() {
     assert.equal(lexer.lex(), lexer.EOF);
     assert.equal(lexer.yytext, "");
     assert.equal(counter, 3);
-};
+  });
 
-exports["test edge case which could break documentation comments in the generated lexer"] = function() {
+  it("test edge case which could break documentation comments in the generated lexer", function() {
     var dict = {
         rules: [
            ["\\*\\/", "return 'X';" ],
@@ -1527,9 +1528,9 @@ exports["test edge case which could break documentation comments in the generate
     var lexer = new RegExpLexer(dict, input);
     assert.equal(lexer.lex(), "X");
     assert.equal(lexer.lex(), lexer.EOF);
-};
+  });
 
-exports["test yylloc info object must be unique for each token"] = function() {
+  it("test yylloc info object must be unique for each token", function() {
     var dict = {
         rules: [
             ["[a-z]", "return 'X';" ]
@@ -1574,9 +1575,9 @@ exports["test yylloc info object must be unique for each token"] = function() {
                                       last_column: 3,
                                       range: [3, 3]});
     }
-};
+  });
 
-exports["test yylloc info object is not modified by subsequent lex() activity"] = function() {
+  it("test yylloc info object is not modified by subsequent lex() activity", function() {
     var dict = {
         rules: [
             ["[a-z]", "return 'X';" ]
@@ -1636,9 +1637,9 @@ exports["test yylloc info object is not modified by subsequent lex() activity"] 
                                       last_column: 3,
                                       range: [3, 3]});
     }
-};
+  });
 
-exports["test yylloc info object CAN be modified by subsequent input() activity"] = function() {
+  it("test yylloc info object CAN be modified by subsequent input() activity", function() {
     var dict = {
         rules: [
             ["[a-z]", "return 'X';" ]
@@ -1693,9 +1694,9 @@ exports["test yylloc info object CAN be modified by subsequent input() activity"
                                     last_line: 1,
                                     last_column: 3,
                                     range: [1, 3]});
-};
+  });
 
-exports["test empty rule set with custom lexer"] = function() {
+  it("test empty rule set with custom lexer", function() {
     var src = null;
 
     // Wrap the custom lexer code in a function so we can String()-dump it:
@@ -1740,9 +1741,9 @@ exports["test empty rule set with custom lexer"] = function() {
     assert.equal(lexer.lex(), "ay");
     assert.equal(lexer.lex(), "ax");
     assert.equal(lexer.lex(), lexer.EOF);
-};
+  });
 
-exports["test XRegExp option support"] = function() {
+  it("test XRegExp option support", function() {
     var dict = {
         options: {
           xregexp: true
@@ -1795,9 +1796,9 @@ exports["test XRegExp option support"] = function() {
     assert.equal(lexer.lex(), "Y");
     assert.equal(lexer.lex(), "Y");
     assert.equal(lexer.lex(), lexer.EOF);
-};
+  });
 
-exports["test support for basic unicode regex compilation via internal xregexp"] = function() {
+  it("test support for basic unicode regex compilation via internal xregexp", function() {
     var dict = {
         options: {
           xregexp: false    // !!!
@@ -1837,9 +1838,9 @@ exports["test support for basic unicode regex compilation via internal xregexp"]
     assert.equal(lexer.lex(), "N");
     assert.equal(lexer.lex(), "Y");
     assert.equal(lexer.lex(), lexer.EOF);
-};
+  });
 
-exports["test support for unicode macro expansion via internal xregexp"] = function() {
+  it("test support for unicode macro expansion via internal xregexp", function() {
     var dict = {
         options: {
           xregexp: false    // !!!
@@ -1869,9 +1870,9 @@ exports["test support for unicode macro expansion via internal xregexp"] = funct
     assert.equal(lexer.lex(), "Y");
     assert.equal(lexer.match, "ε");
     assert.equal(lexer.lex(), lexer.EOF);
-};
+  });
 
-exports["test macro expansion in regex set atom"] = function() {
+  it("test macro expansion in regex set atom", function() {
     var dict = {
         options: {
           xregexp: false    // !!!
@@ -1901,9 +1902,9 @@ exports["test macro expansion in regex set atom"] = function() {
     assert.equal(lexer.lex(), "Y");
     assert.equal(lexer.match, "ε");
     assert.equal(lexer.lex(), lexer.EOF);
-};
+  });
 
-exports["test nested macro expansion in xregexp set atoms"] = function() {
+  it("test nested macro expansion in xregexp set atoms", function() {
     var dict = {
         options: {
           xregexp: false    // !!!
@@ -1937,9 +1938,9 @@ exports["test nested macro expansion in xregexp set atoms"] = function() {
     assert.equal(lexer.lex(), "Y");
     assert.equal(lexer.match, "yα123ε");
     assert.equal(lexer.lex(), lexer.EOF);
-};
+  });
 
-exports["test macros in regex set atoms are recognized when coming from grammar string"] = function() {
+  it("test macros in regex set atoms are recognized when coming from grammar string", function() {
     var dict = [
       "DIGIT [\\p{Number}]",
       "ALPHA [\\p{Alphabetic}]",
@@ -1971,9 +1972,9 @@ exports["test macros in regex set atoms are recognized when coming from grammar 
     assert.equal(lexer.lex(), "Y");
     assert.equal(lexer.match, "yα123ε");
     assert.equal(lexer.lex(), lexer.EOF);
-};
+  });
 
-exports["test nested macro expansion in regex set atoms"] = function() {
+  it("test nested macro expansion in regex set atoms", function() {
     var dict = {
         options: {
           xregexp: false
@@ -2011,9 +2012,9 @@ exports["test nested macro expansion in regex set atoms"] = function() {
     assert.equal(lexer.lex() + '=' + lexer.match, "?=ε");
     assert.equal(lexer.lex() + '=' + lexer.match, "Y=E");
     assert.equal(lexer.lex(), lexer.EOF);
-};
+  });
 
-exports["test nested macro expansion in regex set atoms with negating surrounding set (1 level)"] = function() {
+  it("test nested macro expansion in regex set atoms with negating surrounding set (1 level)", function() {
     var dict = {
         options: {
           xregexp: false
@@ -2055,9 +2056,9 @@ exports["test nested macro expansion in regex set atoms with negating surroundin
     assert.equal(lexer.lex() + '=' + lexer.match, "C=.@_[]ε");
     assert.equal(lexer.lex() + '=' + lexer.match, "Y=E");
     assert.equal(lexer.lex(), lexer.EOF);
-};
+  });
 
-exports["test nested macro expansion in regex set atoms with negating inner set"] = function() {
+  it("test nested macro expansion in regex set atoms with negating inner set", function() {
     var dict = {
         options: {
           xregexp: false
@@ -2120,9 +2121,9 @@ exports["test nested macro expansion in regex set atoms with negating inner set"
     assert.equal(lexer.lex() + '=' + lexer.match, "C=.@_[]ε");
     assert.equal(lexer.lex() + '=' + lexer.match, "Y=E");
     assert.equal(lexer.lex(), lexer.EOF);
-};
+  });
 
-exports["custom '<<EOF>>' lexer rule must only fire once for end-of-input"] = function() {
+  it("custom '<<EOF>>' lexer rule must only fire once for end-of-input", function() {
     var dict = [
       "%%",
       "'x'     {return 'X';}",
@@ -2154,5 +2155,6 @@ exports["custom '<<EOF>>' lexer rule must only fire once for end-of-input"] = fu
     assert.equal(lexer.lex(), lexer.EOF);
     assert.equal(lexer.lex(), lexer.EOF);
     assert.equal(lexer.lex(), lexer.EOF);
-};
+  });
+});
 

@@ -35,10 +35,11 @@
     "xregexp": "github:GerHobbelt/xregexp#master"
   },
   "devDependencies": {
-    "test": "0.6.0"
+    "chai": "3.5.0",
+    "mocha": "3.2.0"
   },
   "scripts": {
-    "test": "node tests/all-tests.js"
+    "test": "make test"
   },
   "directories": {
     "lib": "lib",
