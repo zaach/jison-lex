@@ -1264,9 +1264,8 @@ describe("Lexer Kernel", function () {
     assert.throws(function() {
       lexer.lex();
     },
-    function(err) {
-      return (err instanceof Error) && /You can only invoke reject/.test(err);
-    });
+    Error,
+    /JisonLexerError:.*?You can only invoke reject\(\) in the lexer when the lexer is of the backtracking persuasion/);
   });
 
   it("test yytext state after unput", function() {
