@@ -113,7 +113,7 @@ describe("Lexer Kernel", function () {
     lexer.parseError = function (str, hash) {
       assert(hash);
       assert(str);
-      // and make sure the `this` reference points right back at the current lexer instance!
+      // and make sure the `this` reference points right back at the current *lexer* instance!
       assert.equal(this, lexer);
     };
     assert.equal(lexer.lex(), lexer.ERROR);

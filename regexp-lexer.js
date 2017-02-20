@@ -1972,13 +1972,13 @@ var __objdef__ = {
         return pei;
     },
 
-    parseError: function lexer_parseError(str, hash) {
+    parseError: function lexer_parseError(str, hash, ExceptionClass) {
         if (this.yy.parser && typeof this.yy.parser.parseError === 'function') {
-            return this.yy.parser.parseError.call(this, str, hash) || this.ERROR;
+            return this.yy.parser.parseError(str, hash, ExceptionClass) || this.ERROR;
         } else if (typeof this.yy.parseError === 'function') {
-            return this.yy.parseError.call(this, str, hash) || this.ERROR;
+            return this.yy.parseError(str, hash, ExceptionClass) || this.ERROR;
         } else {
-            throw new this.JisonLexerError(str, hash);
+            throw new ExceptionClass(str, hash);
         }
     },
 
@@ -2236,7 +2236,7 @@ var __objdef__ = {
             // We accomplish this by signaling an 'error' token to be produced for the current
             // .lex() run.
             var p = this.constructLexErrorInfo('Lexical error on line ' + (this.yylineno + 1) + '. You can only invoke reject() in the lexer when the lexer is of the backtracking persuasion (options.backtrack_lexer = true).\n' + this.showPosition(), false);
-            this._signaled_error_token = (this.parseError(p.errStr, p) || this.ERROR);
+            this._signaled_error_token = (this.parseError(p.errStr, p, this.JisonLexerError) || this.ERROR);
         }
         return this;
     },
@@ -2483,7 +2483,7 @@ var __objdef__ = {
             if (!spec || !spec.rules) {
 	            var p = this.constructLexErrorInfo('Internal lexer engine error on line ' + (this.yylineno + 1) + '. The lex grammar programmer pushed a non-existing condition name "' + this.topState() + '"; this is a fatal error and should be reported to the application programmer team!\n', false);
 	            // produce one 'error' token until this situation has been resolved, most probably by parse termination!
-	            return (this.parseError(p.errStr, p) || this.ERROR);
+	            return (this.parseError(p.errStr, p, this.JisonLexerError) || this.ERROR);
             }
         }
 
@@ -2540,7 +2540,7 @@ var __objdef__ = {
             return this.EOF;
         } else {
             var p = this.constructLexErrorInfo('Lexical error on line ' + (this.yylineno + 1) + '. Unrecognized text.\n' + this.showPosition(), this.options.lexer_errors_are_recoverable);
-            token = (this.parseError(p.errStr, p) || this.ERROR);
+            token = (this.parseError(p.errStr, p, this.JisonLexerError) || this.ERROR);
             if (token === this.ERROR) {
                 // we can try to recover from a lexer error that parseError() did not 'recover' for us, by moving forward at least one character at a time:
                 if (!this.match.length) {
@@ -2920,7 +2920,7 @@ function generateGenericHeaderComment() {
         + ' *                             **parser** grammar definition file and which are passed to the lexer via\n'
         + ' *                             its `lexer.lex(...)` API.\n'
         + ' *\n'
-        + ' *    parseError: function(str, hash),\n'
+        + ' *    parseError: function(str, hash, ExceptionClass),\n'
         + ' *\n'
         + ' *    constructLexErrorInfo: function(error_message, is_recoverable),\n'
         + ' *               Helper function.\n'
@@ -2928,7 +2928,7 @@ function generateGenericHeaderComment() {
         + ' *               See it\'s use in this lexer kernel in many places; example usage:\n'
         + ' *\n'
         + ' *                   var infoObj = lexer.constructParseErrorInfo(\'fail!\', true);\n'
-        + ' *                   var retVal = lexer.parseError(infoObj.errStr, infoObj);\n'
+        + ' *                   var retVal = lexer.parseError(infoObj.errStr, infoObj, lexer.JisonLexerError);\n'
         + ' *\n'
         + ' *    options: { ... lexer %options ... },\n'
         + ' *\n'
@@ -3002,7 +3002,12 @@ function generateGenericHeaderComment() {
         + ' * attempt to invoke `yy.parser.parseError()`; when this callback is not provided\n'
         + ' * it will try to invoke `yy.parseError()` instead. When that callback is also not\n'
         + ' * provided, a `JisonLexerError` exception will be thrown containing the error\n'
-        + ' * message and hash, as constructed by the `constructLexErrorInfo()` API.\n'
+        + ' * message and `hash`, as constructed by the `constructLexErrorInfo()` API.\n'
+        + ' *\n'
+        + ' * Note that the lexer\'s `JisonLexerError` error class is passed via the\n'
+        + ' * `ExceptionClass` argument, which is invoked to construct the exception\n'
+        + ' * instance to be thrown, so technically `parseError` will throw the object\n'
+        + ' * produced by the `new ExceptionClass(str, hash)` JavaScript expression.\n'
         + ' *\n'
         + ' * ---\n'
         + ' *\n'
@@ -3012,7 +3017,7 @@ function generateGenericHeaderComment() {
         + ' * (Options are permanent.)\n'
         + ' *  \n'
         + ' *  yy: {\n'
-        + ' *      parseError: function(str, hash)\n'
+        + ' *      parseError: function(str, hash, ExceptionClass)\n'
         + ' *                 optional: overrides the default `parseError` function.\n'
         + ' *  }\n'
         + ' *\n'
