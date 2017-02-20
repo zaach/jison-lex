@@ -60,6 +60,70 @@ describe("Lexer Kernel", function () {
     assert(t3.toString() === 'JisonLexerError: a');
   });
 
+  it("lexer errors are thrown using its own JisonLexerError exception/error class", function () {
+    var dict = [
+      "%%",
+      "'x'     {return 'X';}",
+    ].join('\n');
+
+    var lexer = new RegExpLexer(dict);
+    var JisonLexerError = lexer.JisonLexerError; 
+    assert(JisonLexerError);
+
+    var input = "xxyx";
+
+    lexer.setInput(input);
+    assert.equal(lexer.lex(), 'X');
+    assert.equal(lexer.lex(), 'X');
+    var ex1 = null;
+    try {
+      lexer.lex();
+      assert(false, "should never get here!");
+    } catch (ex) {
+      assert(ex instanceof Error);
+      assert(ex instanceof JisonLexerError);
+      assert(/JisonLexerError:[^]*?Unrecognized text\./.test(ex));
+      assert(ex.hash);
+      assert.equal(typeof ex.hash.errStr, 'string');
+      assert.equal(typeof ex.message, 'string');
+      ex1 = ex;
+    }
+    // since the lexer has been using the standard parseError method, 
+    // which throws an exception **AND DOES NOT MOVE THE READ CURSOR FORWARD**,
+    // we WILL observe the same error again on the next invocation:
+    try {
+      lexer.lex();
+      assert(false, "should never get here!");
+    } catch (ex) {
+      assert(ex instanceof Error);
+      assert(ex instanceof JisonLexerError);
+      assert(/JisonLexerError:[^]*?Unrecognized text\./.test(ex));
+      assert(ex.hash);
+      assert.equal(typeof ex.hash.errStr, 'string');
+      assert.equal(typeof ex.message, 'string');
+
+      assert.strictEqual(ex.message, ex1.message);
+      var check_items = ['text', 'line', 'loc', 'errStr'];
+      check_items.forEach(function (item) {
+        assert.deepEqual(ex[item], ex1[item], "both exceptions should have a matching member '" + item + "'");
+      });
+    }
+    // however, when we apply a non-throwing parseError, we MUST shift one character 
+    // forward on error:
+    lexer.parseError = function (str, hash) {
+      assert(hash);
+      assert(str);
+      // and make sure the `this` reference points right back at the current lexer instance!
+      assert.equal(this, lexer);
+    };
+    assert.equal(lexer.lex(), lexer.ERROR);
+    assert.equal(lexer.yytext, "y");          // the one character shifted on error should end up in the lexer "value", i.e. `yytext`!
+
+    assert.equal(lexer.lex(), 'X');
+    assert.equal(lexer.yytext, "x");
+    assert.equal(lexer.lex(), lexer.EOF);
+  });
+
   it("test set yy", function() {
     var dict = {
         rules: [
