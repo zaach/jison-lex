@@ -28,25 +28,16 @@ describe("Lexer Kernel", function () {
     assert.equal(lexer.lex(), "EOF");
   });
 
-  it("test lexer error class inheritance chain", function() {
-    var dict = {
-        rules: [
-           ["x", "return 'X';" ],
-           ["y", "return 'Y';" ],
-           ["$", "return 'EOF';" ]
-       ]
-    };
+  it("lexer comes with its own JisonLexerError exception/error class", function () {
+    var dict = [
+      "%%",
+      "'x'     {return 'X';}",
+    ].join('\n');
 
-    var input = "xxyx";
+    var lexer = new RegExpLexer(dict);
+    var JisonLexerError = lexer.JisonLexerError; 
+    assert(JisonLexerError);
 
-    var lexer = new RegExpLexer(dict, input);
-    assert.equal(lexer.lex(), "X");
-    assert.equal(lexer.lex(), "X");
-    assert.equal(lexer.lex(), "Y");
-    assert.equal(lexer.lex(), "X");
-    assert.equal(lexer.lex(), "EOF");
-
-    var JisonLexerError = lexer.JisonLexerError;
     var t = new JisonLexerError('test', 42);
     assert(t instanceof Error);
     assert(t instanceof JisonLexerError);
