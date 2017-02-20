@@ -2232,9 +2232,9 @@ var __objdef__ = {
         if (this.options.backtrack_lexer) {
             this._backtrack = true;
         } else {
-            // when the parseError() call returns, we MUST ensure that the error is registered.
+            // when the `parseError()` call returns, we MUST ensure that the error is registered.
             // We accomplish this by signaling an 'error' token to be produced for the current
-            // .lex() run.
+            // `.lex()` run.
             var p = this.constructLexErrorInfo('Lexical error on line ' + (this.yylineno + 1) + '. You can only invoke reject() in the lexer when the lexer is of the backtracking persuasion (options.backtrack_lexer = true).\n' + this.showPosition(), false);
             this._signaled_error_token = (this.parseError(p.errStr, p, this.JisonLexerError) || this.ERROR);
         }
@@ -2446,7 +2446,7 @@ var __objdef__ = {
             this.__currentRuleSet__ = null;
             return false; // rule action called reject() implying the next rule should be tested instead.
         } else if (this._signaled_error_token) {
-            // produce one 'error' token as .parseError() in reject() did not guarantee a failure signal by throwing an exception!
+            // produce one 'error' token as `.parseError()` in `reject()` did not guarantee a failure signal by throwing an exception!
             token = this._signaled_error_token;
             this._signaled_error_token = false;
             return token;
@@ -2542,7 +2542,7 @@ var __objdef__ = {
             var p = this.constructLexErrorInfo('Lexical error on line ' + (this.yylineno + 1) + '. Unrecognized text.\n' + this.showPosition(), this.options.lexer_errors_are_recoverable);
             token = (this.parseError(p.errStr, p, this.JisonLexerError) || this.ERROR);
             if (token === this.ERROR) {
-                // we can try to recover from a lexer error that parseError() did not 'recover' for us, by moving forward at least one character at a time:
+                // we can try to recover from a lexer error that `parseError()` did not 'recover' for us, by moving forward at least one character at a time:
                 if (!this.match.length) {
                     this.input();
                 }
@@ -2980,7 +2980,7 @@ function generateGenericHeaderComment() {
         + ' *\n'
         + ' * ---\n'
         + ' *\n'
-        + ' * The parseError function receives a \'hash\' object with these members for lexer errors:\n'
+        + ' * The `parseError` function receives a \'hash\' object with these members for lexer errors:\n'
         + ' *\n'
         + ' *  {\n'
         + ' *    text:        (matched text)\n'
