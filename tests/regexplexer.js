@@ -2245,6 +2245,74 @@ describe("Lexer Kernel", function () {
     assert.equal(lexer.lex(), lexer.EOF);
   });
 
+  it("test Unicode Supplementary Plane detection in regex set atoms - part 2 (XRegExp enabled)", function() {
+    var dict = {
+        options: {
+          xregexp: true
+        },
+        macros: {
+            "ISSUE_A":  "[\\t\\n\\r\\u0120-\\uD7FF\\uE000\\uFFFD]", // \\u10000-\\u10FFFF
+            "ISSUE_B":  "[\\u001F-\\u002F]",           // side test: proper processing of 'dash' as a *character* in a set.
+            "NOTISSUE": "[^{ISSUE_A}{ISSUE_B}XYZ]",    // negating the inner set means we include the U.S.P. in NOTISSUE!
+            "NOTNOTISSUE": "[^{NOTISSUE}]",            // while negating the *negated set* once again *excludes* the U.S.P. in NOTNOTISSUE!
+        },
+        rules: [
+            ["{ISSUE_A}+", "return 'A';" ],
+            ["{ISSUE_B}+", "return 'B';" ],
+//            ["{NOTISSUE}+", "return 'N';" ],
+            ["{NOTNOTISSUE}+", "return 'C';" ],
+            ["[{ISSUE_A}]+", "return 'X';" ],
+            ["[{ISSUE_B}]+", "return 'Y';" ],
+//            ["[{NOTISSUE}]+", "return 'W';" ],
+            ["[{NOTNOTISSUE}]+", "return 'Z';" ],
+            [".", "return '?';" ],
+        ]
+    };
+    var input = "πXYZxyzα\u10000\u{0023}\u{1023}\u{10230}ε";
+
+    var lexer = new RegExpLexer(dict);
+    //console.log(lexer);
+    //console.log("RULES:::::::::::::::", lexer.rules);
+    var expandedMacros = lexer.getExpandedMacros();
+    //console.log("MACROS:::::::::::::::", expandedMacros);
+    
+    // test the calculated regexes -- the 'sollwert' for the test takes `i2c()` encoding particulars into account:
+    assert.equal(expandedMacros.ISSUE_A.in_set, '\\t\\n\\r\u0120-\uD7FF\uE000\\ufffd');
+    assert.equal(expandedMacros.ISSUE_A.elsewhere, '[\\t\\n\\r\u0120-\uD7FF\uE000\\ufffd]');
+    assert.equal(expandedMacros.ISSUE_B.in_set, '\\u001f-\u002F');
+    assert.equal(expandedMacros.ISSUE_B.elsewhere, '[\\u001f-\u002F]');
+    assert.equal(expandedMacros.NOTISSUE.in_set, '\\u0000-\\b\\v\\f\\u000e-\\u001e0-W\\[-\u011f\\ud800-\\udfff\ue001-\\ufffc\\ufffe\\uffff');
+    assert.equal(expandedMacros.NOTISSUE.elsewhere, '[^\\t\\n\\r\\u001f-\u002FX-Z\u0120-\uD7FF\uE000\\ufffd]');
+    assert.equal(expandedMacros.NOTNOTISSUE.in_set, '\\t\\n\\r\\u001f-\u002FX-Z\u0120-\uD7FF\uE000\\ufffd');
+    assert.equal(expandedMacros.NOTNOTISSUE.elsewhere, '[\\t\\n\\r\\u001f-\u002FX-Z\u0120-\uD7FF\uE000\\ufffd]');
+
+    lexer.setInput(input);
+
+    assert.equal(lexer.lex() + '=' + lexer.match, "A=π");
+    assert.equal(lexer.lex() + '=' + lexer.match, "C=XYZ");
+    assert.equal(lexer.lex() + '=' + lexer.match, "?=x");
+    assert.equal(lexer.lex() + '=' + lexer.match, "?=y");
+    assert.equal(lexer.lex() + '=' + lexer.match, "?=z");
+    assert.equal(lexer.lex() + '=' + lexer.match, "A=α\u1000");
+    assert.equal(lexer.lex() + '=' + lexer.match, "?=0");
+    assert.equal(lexer.lex() + '=' + lexer.match, "B=\u0023");
+    assert.equal(lexer.lex() + '=' + lexer.match, "A=\u1023");
+
+    // WARNING: as we don't support Extended Plane Unicode Codepoints 
+    //          (i.e. any input character beyond U+FFFF), you will
+    //          observe that these characters, when fed to the lexer, MAY
+    //          be split up in their individual UCS2 Character Codes.
+    //          In this example U+10230 === UCS 0xD800 + UCS 0xDE30 
+    //          ('UTF-16' encoding of U+10230)
+
+    //assert.equal(lexer.lex() + '=' + lexer.match, "?=\uD800\uDE30");  // U+10230
+    assert.equal(lexer.lex() + '=' + lexer.match, "?=\uD800");
+    assert.equal(lexer.lex() + '=' + lexer.match, "?=\uDE30");
+
+    assert.equal(lexer.lex() + '=' + lexer.match, "A=ε");
+    assert.equal(lexer.lex(), lexer.EOF);
+  });
+
   it("custom '<<EOF>>' lexer rule must only fire once for end-of-input", function() {
     var dict = [
       "%%",
