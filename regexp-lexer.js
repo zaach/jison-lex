@@ -2079,64 +2079,11 @@ var __objdef__ = {
             var rule_regexes = new Array(len + 1);            // slot 0 is unused; we use a 1-based index approach here to keep the hottest code in `lexer_next()` fast and simple!
             var rule_new_ids = new Array(len + 1);
 
-            if (this.rules_prefix1) {
-                var rule_prefixes = new Array(65536);
-                var first_catch_all_index = 0;
-
-                for (var i = 0; i < len; i++) {
-                  var idx = rule_ids[i];
-                  var rule_re = rules[idx];
-                  rule_regexes[i + 1] = rule_re;
-                  rule_new_ids[i + 1] = idx;
-
-                  var prefix = this.rules_prefix1[idx];
-                  // compression: is the PREFIX-STRING an xref to another PREFIX-STRING slot in the rules_prefix1[] table?
-                  if (typeof prefix === 'number') {
-                    prefix = this.rules_prefix1[prefix];
-                  }
-                  // init the prefix lookup table: first come, first serve...
-                  if (!prefix) {
-                    if (!first_catch_all_index) {
-                      first_catch_all_index = i + 1;
-                    }
-                  } else {
-                    for (var j = 0, pfxlen = prefix.length; j < pfxlen; j++) {
-                      var pfxch = prefix.charCodeAt(j);
-                      // first come, first serve:
-                      if (!rule_prefixes[pfxch]) {
-                        rule_prefixes[pfxch] = i + 1;
-                      }  
-                    }
-                  }
-                }
-
-                // if no catch-all prefix has been encountered yet, it means all
-                // rules have limited prefix sets and it MAY be that particular
-                // input characters won't be recognized by any rule in this 
-                // condition state.
-                // 
-                // To speed up their discovery at run-time while keeping the
-                // remainder of the lexer kernel code very simple (and fast),
-                // we point these to an 'illegal' rule set index *beyond*
-                // the end of the rule set.
-                if (!first_catch_all_index) {
-                  first_catch_all_index = len + 1;
-                }
-
-                for (var i = 0; i < 65536; i++) {
-                  if (!rule_prefixes[i]) {
-                    rule_prefixes[i] = first_catch_all_index; 
-                  }
-                }
-
-                spec.__dispatch_lut = rule_prefixes;
-            } else {
-                for (var i = 0; i < len; i++) {
-                  var idx = rule_ids[i];
-                  var rule_re = rules[idx];
-                  rule_regexes[i + 1] = rule_re;
-                  rule_new_ids[i + 1] = idx;
-                }
+            for (var i = 0; i < len; i++) {
+              var idx = rule_ids[i];
+              var rule_re = rules[idx];
+              rule_regexes[i + 1] = rule_re;
+              rule_new_ids[i + 1] = idx;
             }
 
             spec.rules = rule_new_ids;
