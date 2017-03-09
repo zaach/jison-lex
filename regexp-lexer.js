@@ -13,6 +13,7 @@ const CHR_RE = /^(?:[^\\]|\\[^cxu0-9]|\\[0-9]{1,3}|\\c[A-Z]|\\x[0-9a-fA-F]{2}|\\
 const SET_PART_RE = /^(?:[^\\\]]|\\[^cxu0-9]|\\[0-9]{1,3}|\\c[A-Z]|\\x[0-9a-fA-F]{2}|\\u[0-9a-fA-F]{4}|\\u\{[0-9a-fA-F]+\})+/;
 const NOTHING_SPECIAL_RE = /^(?:[^\\\[\]\(\)\|^\{\}]|\\[^cxu0-9]|\\[0-9]{1,3}|\\c[A-Z]|\\x[0-9a-fA-F]{2}|\\u[0-9a-fA-F]{4}|\\u\{[0-9a-fA-F]+\})+/;
 const SET_IS_SINGLE_PCODE_RE = /^\\[dDwWsS]$|^\\p\{[A-Za-z0-9 \-\._]+\}$/;
+const UNICODE_BASE_PLANE_MAX_CP = 65535;
 
 // The expanded regex sets which are equivalent to the given `\\{c}` escapes:
 //
@@ -245,7 +246,7 @@ function init_EscCode_lookup_table() {
     Pcodes_bitarray_cache_test_order = [];
 
     // `/\S':
-    bitarr = new Array(65536 + 3);
+    bitarr = new Array(UNICODE_BASE_PLANE_MAX_CP + 1);
     set2bitarray(bitarr, '^' + WHITESPACE_SETSTR);
     s = bitarray2set(bitarr);
     esc2bitarr['S'] = bitarr;
@@ -254,7 +255,7 @@ function init_EscCode_lookup_table() {
     Pcodes_bitarray_cache['\\S'] = bitarr;
 
     // `/\s':
-    bitarr = new Array(65536 + 3);
+    bitarr = new Array(UNICODE_BASE_PLANE_MAX_CP + 1);
     set2bitarray(bitarr, WHITESPACE_SETSTR);
     s = bitarray2set(bitarr);
     esc2bitarr['s'] = bitarr;
@@ -263,7 +264,7 @@ function init_EscCode_lookup_table() {
     Pcodes_bitarray_cache['\\s'] = bitarr;
 
     // `/\D':
-    bitarr = new Array(65536 + 3);
+    bitarr = new Array(UNICODE_BASE_PLANE_MAX_CP + 1);
     set2bitarray(bitarr, '^' + DIGIT_SETSTR);
     s = bitarray2set(bitarr);
     esc2bitarr['D'] = bitarr;
@@ -272,7 +273,7 @@ function init_EscCode_lookup_table() {
     Pcodes_bitarray_cache['\\D'] = bitarr;
 
     // `/\d':
-    bitarr = new Array(65536 + 3);
+    bitarr = new Array(UNICODE_BASE_PLANE_MAX_CP + 1);
     set2bitarray(bitarr, DIGIT_SETSTR);
     s = bitarray2set(bitarr);
     esc2bitarr['d'] = bitarr;
@@ -281,7 +282,7 @@ function init_EscCode_lookup_table() {
     Pcodes_bitarray_cache['\\d'] = bitarr;
 
     // `/\W':
-    bitarr = new Array(65536 + 3);
+    bitarr = new Array(UNICODE_BASE_PLANE_MAX_CP + 1);
     set2bitarray(bitarr, '^' + WORDCHAR_SETSTR);
     s = bitarray2set(bitarr);
     esc2bitarr['W'] = bitarr;
@@ -290,7 +291,7 @@ function init_EscCode_lookup_table() {
     Pcodes_bitarray_cache['\\W'] = bitarr;
 
     // `/\w':
-    bitarr = new Array(65536 + 3);
+    bitarr = new Array(UNICODE_BASE_PLANE_MAX_CP + 1);
     set2bitarray(bitarr, WORDCHAR_SETSTR);
     s = bitarray2set(bitarr);
     esc2bitarr['w'] = bitarr;
@@ -307,7 +308,7 @@ function init_EscCode_lookup_table() {
 } 
 
 function updatePcodesBitarrayCacheTestOrder(opts) {
-    var t = new Array(65536);
+    var t = new Array(UNICODE_BASE_PLANE_MAX_CP + 1);
     var l = {};
     var user_has_xregexp = opts && opts.options && opts.options.xregexp;
     var i, j, k, ba;
@@ -321,7 +322,7 @@ function updatePcodesBitarrayCacheTestOrder(opts) {
         }
 
         var cnt = 0;
-        for (i = 0; i < 65536; i++) {
+        for (i = 0; i <= UNICODE_BASE_PLANE_MAX_CP; i++) {
             if (ba[i]) {
                 cnt++;
                 if (!t[i]) {
@@ -351,7 +352,7 @@ function updatePcodesBitarrayCacheTestOrder(opts) {
     var done = {};
     var keys = Object.keys(Pcodes_bitarray_cache);
 
-    for (i = 0; i < 65536; i++) {
+    for (i = 0; i <= UNICODE_BASE_PLANE_MAX_CP; i++) {
         k = t[i][0];
         if (t[i].length === 1 && !done[k]) {
             assert(l[k] > 0);
@@ -373,7 +374,7 @@ function updatePcodesBitarrayCacheTestOrder(opts) {
             var w = Infinity;
             var rv;
             ba = Pcodes_bitarray_cache[k];
-            for (i = 0; i < 65536; i++) {
+            for (i = 0; i <= UNICODE_BASE_PLANE_MAX_CP; i++) {
                 if (ba[i]) {
                     var tl = t[i].length;
                     if (tl > 1 && tl < w) {
@@ -427,7 +428,7 @@ function set2bitarray(bitarr, s, opts) {
     }
 
     function add2bitarray(dst, src) {
-        for (var i = 0; i < 65536; i++) {
+        for (var i = 0; i <= UNICODE_BASE_PLANE_MAX_CP; i++) {
             if (src[i]) {
                 dst[i] = true;
             }
@@ -507,7 +508,7 @@ function set2bitarray(bitarr, s, opts) {
             set_is_inverted = true;
             s = s.substr(1);
             bitarr_orig = bitarr;
-            bitarr = new Array(65536);
+            bitarr = new Array(UNICODE_BASE_PLANE_MAX_CP + 1);
         }
 
         // BITARR collects flags for characters set. Inversion means the complement set of character is st instead.
@@ -618,7 +619,7 @@ function set2bitarray(bitarr, s, opts) {
         // phase actually marked anything at all: the `^` negation will correctly flip=mark the entire
         // range then.
         if (set_is_inverted) {
-            for (var i = 0; i < 65536; i++) {
+            for (var i = 0; i <= UNICODE_BASE_PLANE_MAX_CP; i++) {
                 if (!bitarr[i]) {
                     bitarr_orig[i] = true;
                 }
@@ -635,7 +636,7 @@ function bitarray2set(l, output_inverted_variant, output_minimized) {
     //
     // Before we do that, we inject a sentinel so that our inner loops
     // below can be simple and fast:
-    l[65536] = 1;
+    l[UNICODE_BASE_PLANE_MAX_CP + 1] = 1;
     // now reconstruct the regex set:
     var rv = [];
     var i, j, cnt, lut, tn, tspec, match, pcode, ba4pcode, l2;
@@ -645,12 +646,12 @@ function bitarray2set(l, output_inverted_variant, output_minimized) {
     if (output_inverted_variant) {
         // generate the inverted set, hence all unmarked slots are part of the output range:
         cnt = 0;
-        for (i = 0; i < 65536; i++) {
+        for (i = 0; i <= UNICODE_BASE_PLANE_MAX_CP; i++) {
             if (!l[i]) {
                 cnt++;
             }
         }
-        if (cnt === 65536) {
+        if (cnt === UNICODE_BASE_PLANE_MAX_CP + 1) {
             // When there's nothing in the output we output a special 'match-nothing' regex: `[^\S\s]`.
             // BUT... since we output the INVERTED set, we output the match-all set instead:
             return '\\S\\s';
@@ -673,7 +674,7 @@ function bitarray2set(l, output_inverted_variant, output_minimized) {
                     pcode = tspec[1];
                     ba4pcode = Pcodes_bitarray_cache[pcode];
                     match = 0;
-                    for (j = 0; j < 65536; j++) {
+                    for (j = 0; j <= UNICODE_BASE_PLANE_MAX_CP; j++) {
                         if (ba4pcode[j]) {
                             if (!l[j]) {
                                 // match in current inverted bitset, i.e. there's at
@@ -699,16 +700,16 @@ function bitarray2set(l, output_inverted_variant, output_minimized) {
                         // make sure these edits are visible outside this function as
                         // `l` is an INPUT parameter (~ not modified)!
                         if (!bitarr_is_cloned) {
-                            l2 = new Array(65536 + 3);
-                            for (j = 0; j < 65536; j++) {
+                            l2 = new Array(UNICODE_BASE_PLANE_MAX_CP + 1);
+                            for (j = 0; j <= UNICODE_BASE_PLANE_MAX_CP; j++) {
                                 l2[j] = l[j] || ba4pcode[j];    // `!(!l[j] && !ba4pcode[j])`
                             }
                             // recreate sentinel
-                            l2[65536] = 1;
+                            l2[UNICODE_BASE_PLANE_MAX_CP + 1] = 1;
                             l = l2;
                             bitarr_is_cloned = true;
                         } else {
-                            for (j = 0; j < 65536; j++) {
+                            for (j = 0; j <= UNICODE_BASE_PLANE_MAX_CP; j++) {
                                 l[j] = l[j] || ba4pcode[j];
                             }
                         }
@@ -718,12 +719,12 @@ function bitarray2set(l, output_inverted_variant, output_minimized) {
         }
         
         i = 0;
-        while (i <= 65535) {
+        while (i <= UNICODE_BASE_PLANE_MAX_CP) {
             // find first character not in original set:
             while (l[i]) {
                 i++;
             }
-            if (i > 65535) {
+            if (i >= UNICODE_BASE_PLANE_MAX_CP + 1) {
                 break;
             }
             // find next character not in original set:
@@ -738,12 +739,12 @@ function bitarray2set(l, output_inverted_variant, output_minimized) {
     } else {
         // generate the non-inverted set, hence all logic checks are inverted here...
         cnt = 0;
-        for (i = 0; i < 65536; i++) {
+        for (i = 0; i <= UNICODE_BASE_PLANE_MAX_CP; i++) {
             if (l[i]) {
                 cnt++;
             }
         }
-        if (cnt === 65536) {
+        if (cnt === UNICODE_BASE_PLANE_MAX_CP + 1) {
             // When we find the entire Unicode range is in the output match set, we replace this with
             // a shorthand regex: `[\S\s]`
             return '\\S\\s';
@@ -764,7 +765,7 @@ function bitarray2set(l, output_inverted_variant, output_minimized) {
                     pcode = tspec[1];
                     ba4pcode = Pcodes_bitarray_cache[pcode];
                     match = 0;
-                    for (j = 0; j < 65536; j++) {
+                    for (j = 0; j <= UNICODE_BASE_PLANE_MAX_CP; j++) {
                         if (ba4pcode[j]) {
                             if (l[j]) {
                                 // match in current bitset, i.e. there's at
@@ -790,16 +791,16 @@ function bitarray2set(l, output_inverted_variant, output_minimized) {
                         // make sure these edits are visible outside this function as
                         // `l` is an INPUT parameter (~ not modified)!
                         if (!bitarr_is_cloned) {
-                            l2 = new Array(65536 + 3);
-                            for (j = 0; j < 65536; j++) {
+                            l2 = new Array(UNICODE_BASE_PLANE_MAX_CP + 1);
+                            for (j = 0; j <= UNICODE_BASE_PLANE_MAX_CP; j++) {
                                 l2[j] = l[j] && !ba4pcode[j];
                             }
                             // recreate sentinel
-                            l2[65536] = 1;
+                            l2[UNICODE_BASE_PLANE_MAX_CP + 1] = 1;
                             l = l2;
                             bitarr_is_cloned = true;
                         } else {
-                            for (j = 0; j < 65536; j++) {
+                            for (j = 0; j <= UNICODE_BASE_PLANE_MAX_CP; j++) {
                                 l[j] = l[j] && !ba4pcode[j];
                             }
                         }
@@ -809,18 +810,18 @@ function bitarray2set(l, output_inverted_variant, output_minimized) {
         }
 
         i = 0;
-        while (i <= 65535) {
+        while (i <= UNICODE_BASE_PLANE_MAX_CP) {
             // find first character not in original set:
             while (!l[i]) {
                 i++;
             }
-            if (i > 65535) {
+            if (i >= UNICODE_BASE_PLANE_MAX_CP + 1) {
                 break;
             }
             // find next character not in original set:
             for (j = i + 1; l[j]; j++) {} /* empty loop */
-            if (j > 65536) {
-                j = 65536;
+            if (j > UNICODE_BASE_PLANE_MAX_CP + 1) {
+                j = UNICODE_BASE_PLANE_MAX_CP + 1;
             }
             // generate subset:
             rv.push(i2c(i));
@@ -855,7 +856,7 @@ function reduceRegexToSetBitArray(s, name, opts) {
         return s;
     }
 
-    var l = new Array(65536 + 3);
+    var l = new Array(UNICODE_BASE_PLANE_MAX_CP + 1);
     var internal_state = 0;
     var derr;
 
@@ -1122,7 +1123,7 @@ function reduceRegex(s, name, opts, expandAllMacrosInSet_cb, expandAllMacrosElse
         case '[':
             // this is starting a set within the regex: scan until end of set!
             var set_content = [];
-            var l = new Array(65536 + 3);
+            var l = new Array(UNICODE_BASE_PLANE_MAX_CP + 1);
 
             while (s.length) {
                 var inner = s.match(SET_PART_RE);
