@@ -887,7 +887,7 @@ function buildActions(dict, tokens, opts) {
     }
 
     if (opts.options.flex) {
-        dict.rules.push(['.', 'console.log(yytext);']);
+        dict.rules.push(['.', 'console.log(yytext); /* `flex` lexing mode: the last resort rule! */']);
     }
 
     var gen = prepareRules(dict, actions, caseHelper, tokens && toks, opts.conditions, opts);
