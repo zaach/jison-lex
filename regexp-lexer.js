@@ -1983,6 +1983,15 @@ function generateModuleBody(opt) {
     function produceOptions(opts) {
         var obj = {};
         var do_not_pass = {
+          debug: !opts.debug,     // do not include this item when it is FALSE as there's no debug tracing built into the generated grammar anyway!
+          json: 1,
+          _: 1,
+          noMain: 1,
+          reportStats: 1,
+          file: 1,
+          outfile: 1,
+          inputPath: 1,
+          defaultModuleName: 1,
           moduleName: 1,
           moduleType: 1,
         };
@@ -2000,6 +2009,7 @@ function generateModuleBody(opt) {
             }
         }
 
+        // And now some options which should receive some special processing:
         var pre = obj.pre_lex;
         var post = obj.post_lex;
         // since JSON cannot encode functions, we'll have to do it manually at run-time, i.e. later on:
@@ -2008,7 +2018,7 @@ function generateModuleBody(opt) {
 
         var js = JSON.stringify(obj, null, 2);
 
-        js = js.replace(/  \"([a-zA-Z_][a-zA-Z0-9_]*)\": /g, "  $1: ");
+        js = js.replace(new XRegExp('  "([\\p{Alphabetic}_][\\p{Alphabetic}_\\p{Number}]*)": ', 'g'), '  $1: ');
         js = js.replace(/^( +)pre_lex: true,$/gm, "$1pre_lex: " + String(pre) + ',');
         js = js.replace(/^( +)post_lex: true,$/gm, "$1post_lex: " + String(post) + ',');
         return js;
