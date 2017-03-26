@@ -2016,9 +2016,31 @@ function generateModuleBody(opt) {
           defaultModuleName: 1,
           moduleName: 1,
           moduleType: 1,
+          lexer_errors_are_recoverable: 0,
+          flex: 0,
+          backtrack_lexer: 0,
+          caseInsensitive: 0,
+          showSource: 1,
+          actionsAreAllDefault: 1,
+          actionsUseYYLENG: 1,
+          actionsUseYYLINENO: 1,
+          actionsUseYYTEXT: 1,
+          actionsUseYYLOC: 1,
+          actionsUseParseError: 1,
+          actionsUseYYERROR: 1,
+          actionsUseYYERROK: 1,
+          actionsUseYYCLEARIN: 1,
+          actionsUseValueTracking: 1,
+          actionsUseValueAssignment: 1,
+          actionsUseLocationTracking: 1,
+          actionsUseLocationAssignment: 1,
+          actionsUseYYSTACK: 1,
+          actionsUseYYSSTACK: 1,
+          actionsUseYYSTACKPOINTER: 1,
+          hasErrorRecovery: 1,
         };
         for (var k in opts) {
-            if (!do_not_pass[k]) {
+            if (!do_not_pass[k] && opts[k] != null && opts[k] !== false) {
                 // make sure numeric values are encoded as numeric, the rest as boolean/string.
                 if (typeof opts[k] === 'string') {
                     var f = parseFloat(opts[k]);
