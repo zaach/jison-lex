@@ -31,6 +31,7 @@
   },
   "dependencies": {
     "lex-parser": "github:GerHobbelt/lex-parser#master",
+    "json5": "0.5.1",
     "nomnom": "github:GerHobbelt/nomnom#master",
     "xregexp": "github:GerHobbelt/xregexp#master"
   },

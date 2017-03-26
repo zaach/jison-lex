@@ -5,6 +5,7 @@
 'use strict';
 
 var XRegExp = require('xregexp');
+var json5 = require('json5');
 var lexParser = require('lex-parser');
 var setmgmt = require('./regexp-set-management');
 var version = require('./package.json').version;
@@ -24,6 +25,151 @@ const WHITESPACE_SETSTR = setmgmt.WHITESPACE_SETSTR;
 const DIGIT_SETSTR = setmgmt.DIGIT_SETSTR;
 // `/\w/`:
 const WORDCHAR_SETSTR = setmgmt.WORDCHAR_SETSTR;
+
+
+
+// see also ./lib/cli.js
+const defaultJisonLexOptions = {
+    moduleType: 'commonjs',
+    debug: false,
+    json: false,
+    noMain: false,                  // CLI: not:(--main option)
+
+    // moduleName: 'xxx',
+    defaultModuleName: 'lexer',
+    // file: '...',
+    // outfile: '...',
+    // inputPath: '...',
+    // warn_cb: function(msg) | true (= use Jison.Print) | false (= throw Exception)
+};
+
+
+// Convert dashed option keys to Camel Case, e.g. `camelCase('camels-have-one-hump')` => `'camelsHaveOneHump'`
+function camelCase(s) {
+    // Convert first character to lowercase
+    return s.replace(/^\w/, function (match) {
+        return match.toLowerCase();
+    })
+    .replace(/-\w/g, function (match) {
+        return match.charAt(1).toUpperCase();
+    });
+}
+
+// Merge sets of options.
+//
+// Convert alternative jison option names to their base option.
+//
+// The *last* option set which overrides the default wins, where 'override' is
+// defined as specifying a not-undefined value which is not equal to the
+// default value.
+//
+// Return a fresh set of options.
+function mkStdOptions(/*args...*/) {
+    var h = Object.prototype.hasOwnProperty;
+
+    // clone defaults, so we do not modify those constants.
+    var opts = {};
+    var o = defaultJisonLexOptions;
+
+    for (var p in o) {
+        if (h.call(o, p)) {
+            opts[p] = o[p];
+        }
+    }
+
+    for (var i = 0, len = arguments.length; i < len; i++) {
+        o = arguments[i];
+
+        // clone input (while camel-casing the options), so we do not modify those either.
+        var o2 = {};
+
+        for (var p in o) {
+            if (h.call(o, p)) {
+                o2[camelCase(p)] = o[p];
+            }
+        }
+
+        // now clean them options up:
+        if (typeof o2.main !== 'undefined') {
+            o2.noMain = !o2.main;
+        }
+
+        delete o2.main;
+
+        // now see if we have an overriding option here:
+        for (var p in o2) {
+            if (h.call(o2, p)) {
+                if (o2[p] !== undefined && o2[p] !== defaultJisonLexOptions[p]) {
+                    // special check for `moduleName` to ensure we detect the 'default' moduleName entering from the CLI
+                    // NOT overriding the moduleName set in the grammar definition file via an `%options` entry:
+                    if (p === 'moduleName' && o2[p] === o2.defaultModuleName) {
+                        continue;
+                    }
+                    opts[p] = o2[p];
+                }
+            }
+        }
+    }
+
+    return opts;
+}
+
+
+// Autodetect if the input lexer spec is in JSON or JISON
+// format when the `options.json` flag is `true`.
+// 
+// Produce the JSON lexer spec result when these are JSON formatted already as that
+// would save us the trouble of doing this again, anywhere else in the JISON
+// compiler/generator.
+// 
+// Otherwise return the *parsed* lexer spec as it has
+// been processed through LEXParser.
+function autodetectAndConvertToJSONformat(lexerSpec, options) {
+  var chk_l = null;
+  var ex1;
+
+  if (typeof lexerSpec === 'string') {
+    if (options.json) {
+      try {
+          chk_l = json5.parse(lexerSpec);
+
+          // When JSON5-based parsing of the lexer spec succeeds, this implies the lexer spec is specified in `JSON mode`
+          // *OR* there's a JSON/JSON5 format error in the input:
+      } catch (e) {
+          ex1 = e;
+      }
+    }
+    if (!chk_l) {
+      // // WARNING: the lexer may receive options specified in the **grammar spec file**,
+      // //          hence we should mix the options to ensure the lexParser always
+      // //          receives the full set!
+      // //          
+      // // make sure all options are 'standardized' before we go and mix them together:
+      // options = mkStdOptions(grammar.options, options);
+      try {
+          chk_l = lexParser.parse(lexerSpec, options);
+      } catch (e) {
+          if (options.json) {
+              err = new Error('Could not parse lexer spec in JSON AUTODETECT mode\nError: ' + ex1.message + ' (' + e.message + ')');
+              err.secondary_exception = e;
+              err.stack = ex1.stack;
+          } else {
+              err = new Error('Could not parse lexer spec\nError: ' + e.message);
+              err.stack = e.stack;
+          }
+          throw err;
+      }
+    }
+  } else {
+    chk_l = lexerSpec;
+  }
+
+  // Save time! Don't reparse the entire lexer spec *again* inside the code generators when that's not necessary:
+
+  return chk_l;
+}
+
+
 
 
 
@@ -1688,23 +1834,7 @@ var __objdef__ = {
 
 RegExpLexer.prototype = getRegExpLexerPrototype();
 
-// Convert dashed option keys to Camel Case, e.g. `camelCase('camels-have-one-hump')` => `'camelsHaveOneHump'`
-function camelCase(s) {
-    return s.replace(/-\w/g, function (match) {
-        return match.charAt(1).toUpperCase();
-    });
-}
 
-// camelCase all options:
-function camelCaseAllOptions(opts) {
-    opts = opts || {};
-    var options = {};
-    for (var key in opts) {
-        var nk = camelCase(key);
-        options[nk] = opts[key];
-    }
-    return options;
-}
 
 
 // Fill in the optional, extra parse parameters (`%parse-param ...`)
@@ -1765,17 +1895,14 @@ function processGrammar(dict, tokens, build_options) {
     opts.actionsUseYYSTACKPOINTER = build_options.actionsUseYYSTACKPOINTER;
     opts.hasErrorRecovery = build_options.hasErrorRecovery;
 
-    if (typeof dict === 'string') {
-        dict = lexParser.parse(dict);
-    }
-    dict = dict || {};
+    dict = autodetectAndConvertToJSONformat(dict, build_options) || {};
 
     // Feed the possibly reprocessed 'dictionary' above back to the caller
     // (for use by our error diagnostic assistance code)
     opts.lex_rule_dictionary = dict;
 
     // Make sure to camelCase all options:
-    opts.options = camelCaseAllOptions(dict.options);
+    opts.options = mkStdOptions(build_options, dict.options);
 
     opts.parseParams = opts.options.parseParams;
 
@@ -2228,6 +2355,11 @@ function generateCommonJSModule(opt) {
 }
 
 RegExpLexer.generate = generate;
+
+RegExpLexer.defaultJisonLexOptions = defaultJisonLexOptions;
+RegExpLexer.mkStdOptions = mkStdOptions;
+RegExpLexer.camelCase = camelCase;
+RegExpLexer.autodetectAndConvertToJSONformat = autodetectAndConvertToJSONformat;
 
 module.exports = RegExpLexer;
 
