@@ -1,4 +1,5 @@
 // Basic Lexer implemented using JavaScript regular expressions
+// Zachary Carter <zach@carter.name>
 // MIT Licensed
 
 'use strict';
@@ -48,7 +49,7 @@ function prepareRules(dict, actions, caseHelper, tokens, startConditions, opts) 
     assert(typeof opts.options['case-insensitive'] === 'undefined');
 
     if (!tokens) {
-        tokens = [];
+        tokens = {};
     }
 
     // Depending on the location within the regex we need different expansions of the macros:
@@ -719,8 +720,12 @@ function buildActions(dict, tokens, opts) {
     var toks = {};
     var caseHelper = [];
 
+    // tokens: map/array of token numbers to token names
     for (tok in tokens) {
-        toks[tokens[tok]] = tok;
+        var idx = parseInt(tok);
+        if (idx && idx > 0) {
+            toks[tokens[tok]] = idx;
+        }
     }
 
     if (opts.options.flex) {
