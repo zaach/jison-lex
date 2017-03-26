@@ -1468,7 +1468,7 @@ var __objdef__ = {
             last_line: this.yylineno + 1,
             first_column: this.yylloc.last_column,
             last_column: lines ?
-                         lines[lines.length - 1].length - lines[lines.length - 1].match(/\r?\n?/)[0].length :
+                         lines[lines.length - 1].length - lines[lines.length - 1].match(/^\r?\n?/)[0].length :
                          this.yylloc.last_column + match_str.length
         };
         this.yytext += match_str;
