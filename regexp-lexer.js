@@ -1608,12 +1608,12 @@ var __objdef__ = {
         }
 
         match_str = match[0];
-        if (match_str.indexOf('\n') !== -1 || match_str.indexOf('\r') !== -1) {
+        // if (match_str.indexOf('\n') !== -1 || match_str.indexOf('\r') !== -1) {
             lines = match_str.match(/(?:\r\n?|\n).*/g);
             if (lines) {
                 this.yylineno += lines.length;
             }
-        }
+        // }
         this.yylloc = {
             first_line: this.yylloc.last_line,
             last_line: this.yylineno + 1,
