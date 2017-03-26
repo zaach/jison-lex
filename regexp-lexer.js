@@ -1754,7 +1754,8 @@ var __objdef__ = {
             var p = this.constructLexErrorInfo('Lexical error on line ' + (this.yylineno + 1) + '. Unrecognized text.\n' + this.showPosition(), this.options.lexer_errors_are_recoverable);
             token = (this.parseError(p.errStr, p, this.JisonLexerError) || this.ERROR);
             if (token === this.ERROR) {
-                // we can try to recover from a lexer error that `parseError()` did not 'recover' for us, by moving forward at least one character at a time:
+                // we can try to recover from a lexer error that `parseError()` did not 'recover' for us
+                // by moving forward at least one character at a time:
                 if (!this.match.length) {
                     this.input();
                 }
@@ -1858,6 +1859,14 @@ function expandParseArguments(parseFn, options) {
 
 
 
+// The lexer code stripper, driven by optimization analysis settings and
+// lexer options, which cannot be changed at run-time:
+function stripUnusedLexerCode(src, options) {
+    return src;
+}
+
+
+
 
 
 // generate lexer source from a grammar
@@ -1871,6 +1880,7 @@ function generate(dict, tokens, build_options) {
 function processGrammar(dict, tokens, build_options) {
     build_options = build_options || {};
     var opts = {};
+
     // include the knowledge passed through `build_options` about which lexer
     // features will actually be *used* by the environment (which in 99.9% 
     // of cases is a jison *parser*):
@@ -2031,7 +2041,27 @@ function generateModuleBody(opt) {
 
         // we don't mind that the `test_me()` code above will have this `lexer` variable re-defined:
         // JavaScript is fine with that.
-        out = 'var lexer = {\n';
+        out = `
+var lexer = {
+    // Code Generator Information Report
+    // ---------------------------------
+    //
+    // Options:
+    //   backtracking:        ${opt.options.backtrack_lexer}
+    //   location.ranges:     ${opt.options.ranges}
+    //
+    // Forwarded Parser Analysis flags:
+    //   uses yyleng:         ${opt.actionsUseYYLENG}
+    //   uses yylineno:       ${opt.actionsUseYYLINENO}
+    //   uses yytext:         ${opt.actionsUseYYTEXT}
+    //   uses yylloc:         ${opt.actionsUseYYLOC}
+    //   uses lexer values:   ${opt.actionsUseValueTracking} / ${opt.actionsUseValueAssignment}
+    //   location tracking:   ${opt.actionsUseLocationTracking}
+    //   location assignment: ${opt.actionsUseLocationAssignment}
+    //
+    // --------- END OF REPORT -----------
+
+`;
 
         // get the RegExpLexer.prototype in source code form:
         var protosrc = String(getRegExpLexerPrototype);
@@ -2040,6 +2070,7 @@ function generateModuleBody(opt) {
         .replace(/^[\s\r\n]*function getRegExpLexerPrototype\(\) \{[\s\r\n]*var __objdef__ = \{[\s]*[\r\n]/, '')
         .replace(/[\s\r\n]*\};[\s\r\n]*return __objdef__;[\s\r\n]*\}[\s\r\n]*/, '');
         protosrc = expandParseArguments(protosrc, opt.options);
+        protosrc = stripUnusedLexerCode(protosrc, opt);
         out += protosrc + ',\n';
 
         if (opt.options) {
