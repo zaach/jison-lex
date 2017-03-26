@@ -1,5 +1,5 @@
 
-all: build test
+all: build test examples
 
 prep: npm-install
 
@@ -11,6 +11,9 @@ build:
 
 test:
 	node_modules/.bin/mocha tests/
+
+examples:
+	node ./cli.js examples/lex.l -o examples/output/ -x
 
 
 # increment the XXX <prelease> number in the package.json file: version <major>.<minor>.<patch>-<prelease>
@@ -26,6 +29,7 @@ git-tag:
 
 clean:
 	-rm -rf node_modules/
+	-rm -rf examples/output/
 
 superclean: clean
 	-find . -type d -name 'node_modules' -exec rm -rf "{}" \;
@@ -34,4 +38,4 @@ superclean: clean
 
 
 
-.PHONY: all prep npm-install build test clean superclean bump git-tag
+.PHONY: all prep npm-install build test examples clean superclean bump git-tag

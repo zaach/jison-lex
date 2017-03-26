@@ -7,3 +7,5 @@ npm-debug.log
 *.bak
 *.orig
 
+# example output
+examples/output/
