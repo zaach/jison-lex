@@ -201,7 +201,9 @@ function prepareRules(dict, actions, caseHelper, tokens, startConditions, opts) 
         active_conditions,
         rules = dict.rules,
         newRules = [],
-        macros = {};
+        macros = {},
+        regular_rule_count = 0,
+        simple_rule_count = 0;
 
     // Assure all options are camelCased:
     assert(typeof opts.options['case-insensitive'] === 'undefined');
@@ -306,8 +308,10 @@ function prepareRules(dict, actions, caseHelper, tokens, startConditions, opts) 
         // always append `break;` even when it would be obvious to a human that such would be 'unreachable code'.
         var match_nr = /^return[\s\r\n]+((?:'(?:\\'|[^']+)+')|(?:"(?:\\"|[^"]+)+")|\d+)[\s\r\n]*;?$/.exec(action.trim());
         if (match_nr) {
+            simple_rule_count++;
             caseHelper.push([].concat(code, i, ':', match_nr[1]).join(' ').replace(/[\n]/g, '\n  '));
         } else {
+            regular_rule_count++;
             actions.push([].concat('case', i, ':', code, action, '\nbreak;').join(' '));
         }
     }
@@ -317,7 +321,10 @@ function prepareRules(dict, actions, caseHelper, tokens, startConditions, opts) 
 
     return {
         rules: newRules,
-        macros: macros
+        macros: macros,
+
+        regular_rule_count: regular_rule_count,
+        simple_rule_count: simple_rule_count,
     };
 }
 
@@ -903,7 +910,10 @@ function buildActions(dict, tokens, opts) {
         actions: expandParseArguments('function lexer__performAction(yy, yy_, $avoiding_name_collisions, YY_START, parseParams) {\n', opts) + fun + '\n}',
 
         rules: gen.rules,
-        macros: gen.macros                   // propagate these for debugging/diagnostic purposes
+        macros: gen.macros,                   // propagate these for debugging/diagnostic purposes
+
+        regular_rule_count: gen.regular_rule_count,
+        simple_rule_count: gen.simple_rule_count,
     };
 }
 
