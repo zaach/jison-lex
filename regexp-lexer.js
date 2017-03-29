@@ -306,7 +306,10 @@ RegExpLexer.prototype = {
             }
         }
 
-        lines = match[0].match(/(?:\r\n?|\n).*/g);
+        // Bail from match if string doesn't contain newline nor carriage return
+        if (match[0].indexOf('\n') != -1 || match[0].indexOf('\r') != -1) {
+            lines = match[0].match(/(?:\r\n?|\n).*/g);
+        }
         if (lines) {
             this.yylineno += lines.length;
         }
@@ -357,19 +360,20 @@ RegExpLexer.prototype = {
         var token,
             match,
             tempMatch,
-            index;
+            ruleMatch;
         if (!this._more) {
             this.yytext = '';
             this.match = '';
         }
         var rules = this._currentRules();
-        for (var i = 0; i < rules.length; i++) {
-            tempMatch = this._input.match(this.rules[rules[i]]);
+        for (var i = 0, n = rules.length; i < n; i++) {
+            const rule = rules[i];
+            tempMatch = this._input.match(this.rules[rule]);
             if (tempMatch && (!match || tempMatch[0].length > match[0].length)) {
                 match = tempMatch;
-                index = i;
+                ruleMatch = rule;
                 if (this.options.backtrack_lexer) {
-                    token = this.test_match(tempMatch, rules[i]);
+                    token = this.test_match(tempMatch, rule);
                     if (token !== false) {
                         return token;
                     } else if (this._backtrack) {
@@ -385,7 +389,7 @@ RegExpLexer.prototype = {
             }
         }
         if (match) {
-            token = this.test_match(match, rules[index]);
+            token = this.test_match(match, ruleMatch);
             if (token !== false) {
                 return token;
             }
@@ -405,12 +409,11 @@ RegExpLexer.prototype = {
 
     // return next match that has a token
     lex: function lex () {
-        var r = this.next();
-        if (r) {
-            return r;
-        } else {
-            return this.lex();
+        let r;
+        while (!r) {
+            r = this.next();
         }
+        return r;
     },
 
     // activates a new lexer condition state (pushes the new lexer condition state onto the condition stack)
