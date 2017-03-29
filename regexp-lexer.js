@@ -307,7 +307,7 @@ RegExpLexer.prototype = {
         }
 
         // Bail from match if string doesn't contain newline nor carriage return
-        if (lines.indexOf('\n') != -1 || lines.indexOf('\r') != -1) {
+        if (match[0].indexOf('\n') != -1 || match[0].indexOf('\r') != -1) {
             lines = match[0].match(/(?:\r\n?|\n).*/g);
         }
         if (lines) {
