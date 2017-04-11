@@ -1054,7 +1054,7 @@ function RegExpLexer(dict, input, tokens, build_options) {
                 '',
                 'return lexer;'].join('\n');
             var lexer = code_exec(testcode, function generated_code_exec_wrapper(sourcecode) {
-                //console.log("===============================TEST CODE\n", sourcecode, "\n=====================END====================\n");
+                //console.log("===============================LEXER TEST CODE\n", sourcecode, "\n=====================END====================\n");
                 var lexer_f = new Function('', sourcecode);
                 return lexer_f();
             }, {
