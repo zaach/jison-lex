@@ -195,7 +195,7 @@ function printFunctionSourceCode(f) {
     return String(f).replace(/^    /gm, '');
 }
 function printFunctionSourceCodeContainer(f) {
-    return String(f).replace(/^    /gm, '').replace(/^    /gm, '').replace(/function [^\{]+\{/, '').replace(/\}$/, '');
+    return String(f).replace(/^    /gm, '').replace(/^    /gm, '').replace(/\bfunction\b[^\{]+\{/, '').replace(/\}$/, '');
 }
 
 
@@ -927,10 +927,14 @@ function buildActions(dict, tokens, opts) {
 //       jison/lib/jison.js @ line 2304:lrGeneratorMixin.generateErrorClass
 //
 function generateErrorClass() {
+    /**
     // See also:
     // http://stackoverflow.com/questions/1382107/whats-a-good-way-to-extend-error-in-javascript/#35881508
     // but we keep the prototype.constructor and prototype.name assignment lines too for compatibility
     // with userland code which might access the derived class in a 'classic' way.
+    //
+    // @constructor
+    */
     function JisonLexerError(msg, hash) {
         Object.defineProperty(this, 'name', {
             enumerable: false,
@@ -2139,7 +2143,7 @@ var lexer = {
         var protosrc = String(getRegExpLexerPrototype);
         // and strip off the surrounding bits we don't want:
         protosrc = protosrc
-        .replace(/^[\s\r\n]*function getRegExpLexerPrototype\(\) \{[\s\r\n]*var __objdef__ = \{[\s]*[\r\n]/, '')
+        .replace(/^[\s\r\n]*function getRegExpLexerPrototype\(\)[\s\r\n]*\{[\s\r\n]*var __objdef__[\s\r\n]*=[\s\r\n]*\{[\s\r\n]*/, '')
         .replace(/[\s\r\n]*\};[\s\r\n]*return __objdef__;[\s\r\n]*\}[\s\r\n]*/, '');
         protosrc = expandParseArguments(protosrc, opt.options);
         protosrc = stripUnusedLexerCode(protosrc, opt);
