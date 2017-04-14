@@ -143,7 +143,7 @@ function mkStdOptions(/*args...*/) {
 // been processed through LEXParser.
 function autodetectAndConvertToJSONformat(lexerSpec, options) {
   var chk_l = null;
-  var ex1;
+  var ex1, err;
 
   if (typeof lexerSpec === 'string') {
     if (options.json) {
@@ -873,7 +873,7 @@ function expandMacros(src, macros, opts) {
     return src;
 }
 
-function prepareStartConditions (conditions) {
+function prepareStartConditions(conditions) {
     var sc,
         hash = {};
     for (sc in conditions) {
