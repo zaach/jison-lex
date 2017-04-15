@@ -946,7 +946,7 @@ function generateErrorClass() {
      * but we keep the prototype.constructor and prototype.name assignment lines too for compatibility
      * with userland code which might access the derived class in a 'classic' way.
      *
-     * @export
+     * @public
      * @constructor
      * @nocollapse
      */
