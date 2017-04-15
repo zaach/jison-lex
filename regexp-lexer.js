@@ -2056,31 +2056,31 @@ function generate(dict, tokens, build_options) {
 /**  @public */
 function processGrammar(dict, tokens, build_options) {
     build_options = build_options || {};
-    var opts = {};
-
-    // include the knowledge passed through `build_options` about which lexer
-    // features will actually be *used* by the environment (which in 99.9%
-    // of cases is a jison *parser*):
-    //
-    // (this stuff comes straight from the jison Optimization Analysis.)
-    //
-    opts.parseActionsAreAllDefault = build_options.parseActionsAreAllDefault;
-    opts.parseActionsUseYYLENG = build_options.parseActionsUseYYLENG;
-    opts.parseActionsUseYYLINENO = build_options.parseActionsUseYYLINENO;
-    opts.parseActionsUseYYTEXT = build_options.parseActionsUseYYTEXT;
-    opts.parseActionsUseYYLOC = build_options.parseActionsUseYYLOC;
-    opts.parseActionsUseParseError = build_options.parseActionsUseParseError;
-    opts.parseActionsUseYYERROR = build_options.parseActionsUseYYERROR;
-    opts.parseActionsUseYYERROK = build_options.parseActionsUseYYERROK;
-    opts.parseActionsUseYYCLEARIN = build_options.parseActionsUseYYCLEARIN;
-    opts.parseActionsUseValueTracking = build_options.parseActionsUseValueTracking;
-    opts.parseActionsUseValueAssignment = build_options.parseActionsUseValueAssignment;
-    opts.parseActionsUseLocationTracking = build_options.parseActionsUseLocationTracking;
-    opts.parseActionsUseLocationAssignment = build_options.parseActionsUseLocationAssignment;
-    opts.parseActionsUseYYSTACK = build_options.parseActionsUseYYSTACK;
-    opts.parseActionsUseYYSSTACK = build_options.parseActionsUseYYSSTACK;
-    opts.parseActionsUseYYSTACKPOINTER = build_options.parseActionsUseYYSTACKPOINTER;
-    opts.parserHasErrorRecovery = build_options.parserHasErrorRecovery;
+    var opts = {
+        // include the knowledge passed through `build_options` about which lexer
+        // features will actually be *used* by the environment (which in 99.9%
+        // of cases is a jison *parser*):
+        //
+        // (this stuff comes straight from the jison Optimization Analysis.)
+        //
+        parseActionsAreAllDefault: build_options.parseActionsAreAllDefault,
+        parseActionsUseYYLENG: build_options.parseActionsUseYYLENG,
+        parseActionsUseYYLINENO: build_options.parseActionsUseYYLINENO,
+        parseActionsUseYYTEXT: build_options.parseActionsUseYYTEXT,
+        parseActionsUseYYLOC: build_options.parseActionsUseYYLOC,
+        parseActionsUseParseError: build_options.parseActionsUseParseError,
+        parseActionsUseYYERROR: build_options.parseActionsUseYYERROR,
+        parseActionsUseYYERROK: build_options.parseActionsUseYYERROK,
+        parseActionsUseYYCLEARIN: build_options.parseActionsUseYYCLEARIN,
+        parseActionsUseValueTracking: build_options.parseActionsUseValueTracking,
+        parseActionsUseValueAssignment: build_options.parseActionsUseValueAssignment,
+        parseActionsUseLocationTracking: build_options.parseActionsUseLocationTracking,
+        parseActionsUseLocationAssignment: build_options.parseActionsUseLocationAssignment,
+        parseActionsUseYYSTACK: build_options.parseActionsUseYYSTACK,
+        parseActionsUseYYSSTACK: build_options.parseActionsUseYYSSTACK,
+        parseActionsUseYYSTACKPOINTER: build_options.parseActionsUseYYSTACKPOINTER,
+        parserHasErrorRecovery: build_options.parserHasErrorRecovery,
+    };
 
     dict = autodetectAndConvertToJSONformat(dict, build_options) || {};
 
@@ -2246,27 +2246,9 @@ function generateModuleBody(opt) {
 
         // we don't mind that the `test_me()` code above will have this `lexer` variable re-defined:
         // JavaScript is fine with that.
-        out = `
+        var code = [`
 var lexer = {
-    // Code Generator Information Report
-    // ---------------------------------
-    //
-    // Options:
-    //   backtracking:        ${opt.options.backtrack_lexer}
-    //   location.ranges:     ${opt.options.ranges}
-    //
-    // Forwarded Parser Analysis flags:
-    //   uses yyleng:         ${opt.parseActionsUseYYLENG}
-    //   uses yylineno:       ${opt.parseActionsUseYYLINENO}
-    //   uses yytext:         ${opt.parseActionsUseYYTEXT}
-    //   uses yylloc:         ${opt.parseActionsUseYYLOC}
-    //   uses lexer values:   ${opt.parseActionsUseValueTracking} / ${opt.parseActionsUseValueAssignment}
-    //   location tracking:   ${opt.parseActionsUseLocationTracking}
-    //   location assignment: ${opt.parseActionsUseLocationAssignment}
-    //
-    // --------- END OF REPORT -----------
-
-`;
+`, '' /* slot #1: placeholder for analysis report further below */];
 
         // get the RegExpLexer.prototype in source code form:
         var protosrc = printFunctionSourceCodeContainer(getRegExpLexerPrototype, 1);
@@ -2276,20 +2258,72 @@ var lexer = {
         .replace(/\s*\};[\s\r\n]*$/, '');
         protosrc = expandParseArguments(protosrc, opt.options);
         protosrc = stripUnusedLexerCode(protosrc, opt);
-        out += protosrc + ',\n';
+        code.push(protosrc + ',\n');
 
         assert(opt.options);
         // Assure all options are camelCased:
         assert(typeof opt.options['case-insensitive'] === 'undefined');
 
-        out += '    options: ' + produceOptions(opt.options);
+        code.push('    options: ' + produceOptions(opt.options));
 
-        out += ',\n    JisonLexerError: JisonLexerError';
-        out += ',\n    performAction: ' + String(opt.performAction);
-        out += ',\n    simpleCaseActionClusters: ' + String(opt.caseHelperInclude);
-        out += ',\n    rules: [\n' + generateRegexesInitTableCode(opt) + '\n]';
-        out += ',\n    conditions: ' + cleanupJSON(JSON.stringify(opt.conditions, null, 2));
-        out += '\n};\n';
+        var performActionCode = String(opt.performAction);
+        var simpleCaseActionClustersCode = String(opt.caseHelperInclude);
+        var rulesCode = generateRegexesInitTableCode(opt);
+        var conditionsCode = cleanupJSON(JSON.stringify(opt.conditions, null, 2));
+        code.push(`,
+    JisonLexerError: JisonLexerError,
+    performAction: ${performActionCode},
+    simpleCaseActionClusters: ${simpleCaseActionClustersCode},
+    rules: [
+        ${rulesCode}
+    ],
+    conditions: ${conditionsCode}
+};
+`);
+
+        // inject analysis report now:
+        code[1] = `
+    // Code Generator Information Report
+    // ---------------------------------
+    //
+    // Options:
+    //
+    //   backtracking:        ${opt.options.backtrack_lexer}
+    //   location.ranges:     ${opt.options.ranges}
+    //
+    //
+    // Forwarded Parser Analysis flags:
+    //
+    //   uses yyleng: ..................... ${opt.parseActionsUseYYLENG}
+    //   uses yylineno: ................... ${opt.parseActionsUseYYLINENO}
+    //   uses yytext: ..................... ${opt.parseActionsUseYYTEXT}
+    //   uses yylloc: ..................... ${opt.parseActionsUseYYLOC}
+    //   uses lexer values: ............... ${opt.parseActionsUseValueTracking} / ${opt.parseActionsUseValueAssignment}
+    //   location tracking: ............... ${opt.parseActionsUseLocationTracking}
+    //   location assignment: ............. ${opt.parseActionsUseLocationAssignment}
+    //
+    //
+    // Lexer Analysis flags:
+    //
+    //   uses yyleng: ..................... ${opt.lexerActionsUseYYLENG}
+    //   uses yylineno: ................... ${opt.lexerActionsUseYYLINENO}
+    //   uses yytext: ..................... ${opt.lexerActionsUseYYTEXT}
+    //   uses yylloc: ..................... ${opt.lexerActionsUseYYLOC}
+    //   uses ParseError API: ............. ${opt.lexerActionsUseParseError}
+    //   uses location tracking & editing:  ${opt.lexerActionsUseLocationTracking}
+    //   uses more() API: ................. ${opt.lexerActionsUseMore}
+    //   uses unput() API: ................ ${opt.lexerActionsUseUnput}
+    //   uses reject() API: ............... ${opt.lexerActionsUseReject}
+    //   uses less() API: ................. ${opt.lexerActionsUseLess}
+    //   uses display APIs pastInput(), upcomingInput(), showPosition():
+    //        ............................. ${opt.lexerActionsUseDisplayAPIs}
+    //   uses describeYYLLOC() API: ....... ${opt.lexerActionsUseDescribeYYLOC}
+    //
+    // --------- END OF REPORT -----------
+
+`;
+
+        out = code.join('');
     } else {
         // We're clearly looking at a custom lexer here as there's no lexer rules at all.
         //
