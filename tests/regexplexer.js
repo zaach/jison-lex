@@ -1019,3 +1019,29 @@ exports["test yytext state after unput"] = function() {
     assert.equal(lexer.lex(), "NUMBER");
     assert.equal(lexer.lex(), "EOF");
 };
+
+exports["test not blowing up on a sequence of ignored tockens the size of the maximum callstack size"] = function() {
+    var dict = {
+        rules: [
+            ["#", "// ignored" ],
+            ["$", "return 'EOF';"]
+        ]
+    };
+
+    /**
+     * Crafts a src string of `#`s for our rules the size of the current maximum callstack.
+     * The lexer used to blow up with a stack overflow error in this case.
+     */
+    var makeStackBlowingHashes = function() {
+        try {
+            return "#" + makeStackBlowingHashes();
+        } catch (e) {
+            return "#";
+        }
+    };
+
+    var input = makeStackBlowingHashes();
+
+    var lexer = new RegExpLexer(dict, input);
+    assert.equal(lexer.lex(), "EOF");
+};
