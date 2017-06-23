@@ -177,8 +177,15 @@ describe("Lexer Kernel", function () {
     var input = "xa";
 
     var lexer = new RegExpLexer(dict, input);
+    var JisonLexerError = lexer.JisonLexerError; 
+    assert(JisonLexerError);
+
     assert.equal(lexer.lex(), "X");
-    assert.throws(function(){ lexer.lex(); }, /JisonLexerError:.*?Unrecognized text/, "bad char");
+    assert.throws(function () { 
+      lexer.lex(); 
+    }, 
+    JisonLexerError,
+    /Lexical error on line [^]*?Unrecognized text/, "bad char");
   });
 
   it("test if lexer continues correctly after having encountered an unrecognized char", function() {
@@ -1314,13 +1321,16 @@ describe("Lexer Kernel", function () {
     var input = "A5";
 
     var lexer = new RegExpLexer(dict);
+    var JisonLexerError = lexer.JisonLexerError; 
+    assert(JisonLexerError);
+
     lexer.setInput(input);
 
     assert.throws(function() {
       lexer.lex();
     },
-    Error,
-    /JisonLexerError:.*?You can only invoke reject\(\) in the lexer when the lexer is of the backtracking persuasion/);
+    JisonLexerError,
+    /Lexical error on line [^]*?You can only invoke reject\(\) in the lexer when the lexer is of the backtracking persuasion/);
   });
 
   it("test yytext state after unput", function() {
