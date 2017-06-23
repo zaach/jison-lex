@@ -13,6 +13,7 @@ var version = require('./package.json').version;
 var assert = require('assert');
 
 
+
 const XREGEXP_UNICODE_ESCAPE_RE = setmgmt.XREGEXP_UNICODE_ESCAPE_RE;              // Matches the XRegExp Unicode escape braced part, e.g. `{Number}`
 const CHR_RE = setmgmt.CHR_RE;
 const SET_PART_RE = setmgmt.SET_PART_RE;
@@ -1327,6 +1328,9 @@ function getRegExpLexerPrototype() {
         @this {RegExpLexer}
         */
         parseError: function lexer_parseError(str, hash, ExceptionClass) {
+            if (!ExceptionClass) {
+                ExceptionClass = this.JisonLexerError;
+            }
             if (this.yy.parser && typeof this.yy.parser.parseError === 'function') {
                 return this.yy.parser.parseError(str, hash, ExceptionClass) || this.ERROR;
             } else if (typeof this.yy.parseError === 'function') {
