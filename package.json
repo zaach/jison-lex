@@ -30,17 +30,18 @@
     "node": ">=4.0"
   },
   "dependencies": {
-    "lex-parser": "github:GerHobbelt/lex-parser#master",
     "json5": "0.5.1",
+    "lex-parser": "github:GerHobbelt/lex-parser#master",
     "nomnom": "github:GerHobbelt/nomnom#master",
     "xregexp": "github:GerHobbelt/xregexp#master"
   },
   "devDependencies": {
-    "chai": "3.5.0",
-    "mocha": "3.2.0"
+    "chai": "4.0.2",
+    "mocha": "3.4.2"
   },
   "scripts": {
-    "test": "make test"
+    "test": "make test",
+    "build": "make"
   },
   "directories": {
     "lib": "lib",
