@@ -12,6 +12,7 @@ var code_exec = require('./safe-code-exec-and-diag');
 var version = require('./package.json').version;
 var assert = require('assert');
 
+
 const XREGEXP_UNICODE_ESCAPE_RE = setmgmt.XREGEXP_UNICODE_ESCAPE_RE;              // Matches the XRegExp Unicode escape braced part, e.g. `{Number}`
 const CHR_RE = setmgmt.CHR_RE;
 const SET_PART_RE = setmgmt.SET_PART_RE;
@@ -30,8 +31,8 @@ const WORDCHAR_SETSTR = setmgmt.WORDCHAR_SETSTR;
 
 
 // see also ./lib/cli.js
-/** 
-@public 
+/**
+@public
 @nocollapse
 */
 const defaultJisonLexOptions = {
@@ -1236,8 +1237,8 @@ function RegExpLexer(dict, input, tokens, build_options) {
 
 // As a function can be reproduced in source-code form by any JavaScript engine, we're going to wrap this chunk
 // of code in a function so that we can easily get it including it comments, etc.:
-/** 
-@public 
+/**
+@public
 @nocollapse
 */
 function getRegExpLexerPrototype() {
@@ -1276,8 +1277,8 @@ function getRegExpLexerPrototype() {
 
         // INTERNAL USE: construct a suitable error info hash object instance for `parseError`.
         /**
-        @public 
-        @this {RegExpLexer} 
+        @public
+        @this {RegExpLexer}
         */
         constructLexErrorInfo: function lexer_constructLexErrorInfo(msg, recoverable) {
             /** @constructor */
@@ -1298,9 +1299,9 @@ function getRegExpLexerPrototype() {
                 // Note that only array and object references are nuked as those
                 // constitute the set of elements which can produce a cyclic ref.
                 // The rest of the members is kept intact as they are harmless.
-                /** 
-                @public 
-                @this {LexErrorInfo} 
+                /**
+                @public
+                @this {LexErrorInfo}
                 */
                 destroy: function destructLexErrorInfo() {
                     // remove cyclic references added to error info:
@@ -1321,9 +1322,9 @@ function getRegExpLexerPrototype() {
             return pei;
         },
 
-        /** 
-        @public 
-        @this {RegExpLexer} 
+        /**
+        @public
+        @this {RegExpLexer}
         */
         parseError: function lexer_parseError(str, hash, ExceptionClass) {
             if (this.yy.parser && typeof this.yy.parser.parseError === 'function') {
@@ -1342,9 +1343,9 @@ function getRegExpLexerPrototype() {
         // up these constructs, which *may* carry cyclic references which would
         // otherwise prevent the instances from being properly and timely
         // garbage-collected, i.e. this function helps prevent memory leaks!
-        /** 
-        @public 
-        @this {RegExpLexer} 
+        /**
+        @public
+        @this {RegExpLexer}
         */
         cleanupAfterLex: function lexer_cleanupAfterLex(do_not_nuke_errorinfos) {
             var rv;
@@ -1369,9 +1370,9 @@ function getRegExpLexerPrototype() {
         },
 
         // clear the lexer token context; intended for internal use only
-        /** 
-        @public 
-        @this {RegExpLexer} 
+        /**
+        @public
+        @this {RegExpLexer}
         */
         clear: function lexer_clear() {
             this.yytext = '';
@@ -1383,9 +1384,9 @@ function getRegExpLexerPrototype() {
         },
 
         // resets the lexer, sets new input
-        /** 
-        @public 
-        @this {RegExpLexer} 
+        /**
+        @public
+        @this {RegExpLexer}
         */
         setInput: function lexer_setInput(input, yy) {
             this.yy = yy || this.yy || {};
@@ -1453,9 +1454,9 @@ function getRegExpLexerPrototype() {
         },
 
         // consumes and returns one char from the input
-        /** 
-        @public 
-        @this {RegExpLexer} 
+        /**
+        @public
+        @this {RegExpLexer}
         */
         input: function lexer_input() {
             if (!this._input) {
@@ -1506,10 +1507,10 @@ function getRegExpLexerPrototype() {
             return ch;
         },
 
-        // unshifts one char (or a string) into the input
-        /** 
-        @public 
-        @this {RegExpLexer} 
+        // unshifts one char (or an entire string) into the input
+        /**
+        @public
+        @this {RegExpLexer}
         */
         unput: function lexer_unput(ch) {
             var len = ch.length;
@@ -1542,9 +1543,9 @@ function getRegExpLexerPrototype() {
         },
 
         // When called from action, caches matched text and appends it on next action
-        /** 
-        @public 
-        @this {RegExpLexer} 
+        /**
+        @public
+        @this {RegExpLexer}
         */
         more: function lexer_more() {
             this._more = true;
@@ -1552,9 +1553,9 @@ function getRegExpLexerPrototype() {
         },
 
         // When called from action, signals the lexer that this rule fails to match the input, so the next matching rule (regex) should be tested instead.
-        /** 
-        @public 
-        @this {RegExpLexer} 
+        /**
+        @public
+        @this {RegExpLexer}
         */
         reject: function lexer_reject() {
             if (this.options.backtrack_lexer) {
@@ -1570,9 +1571,9 @@ function getRegExpLexerPrototype() {
         },
 
         // retain first n characters of the match
-        /** 
-        @public 
-        @this {RegExpLexer} 
+        /**
+        @public
+        @this {RegExpLexer}
         */
         less: function lexer_less(n) {
             return this.unput(this.match.slice(n));
@@ -1582,9 +1583,9 @@ function getRegExpLexerPrototype() {
         // Limit the returned string length to `maxSize` (default: 20).
         // Limit the returned string to the `maxLines` number of lines of input (default: 1).
         // Negative limit values equal *unlimited*.
-        /** 
-        @public 
-        @this {RegExpLexer} 
+        /**
+        @public
+        @this {RegExpLexer}
         */
         pastInput: function lexer_pastInput(maxSize, maxLines) {
             var past = this.matched.substring(0, this.matched.length - this.match.length);
@@ -1617,9 +1618,9 @@ function getRegExpLexerPrototype() {
         // Limit the returned string length to `maxSize` (default: 20).
         // Limit the returned string to the `maxLines` number of lines of input (default: 1).
         // Negative limit values equal *unlimited*.
-        /** 
-        @public 
-        @this {RegExpLexer} 
+        /**
+        @public
+        @this {RegExpLexer}
         */
         upcomingInput: function lexer_upcomingInput(maxSize, maxLines) {
             var next = this.match;
@@ -1651,9 +1652,9 @@ function getRegExpLexerPrototype() {
         },
 
         // return a string which displays the character position where the lexing error occurred, i.e. for error messages
-        /** 
-        @public 
-        @this {RegExpLexer} 
+        /**
+        @public
+        @this {RegExpLexer}
         */
         showPosition: function lexer_showPosition(maxPrefix, maxPostfix) {
             var pre = this.pastInput(maxPrefix).replace(/\s/g, ' ');
@@ -1665,9 +1666,9 @@ function getRegExpLexerPrototype() {
         // the input `yylloc` location object.
         // Set `display_range_too` to TRUE to include the string character index position(s)
         // in the description if the `yylloc.range` is available.
-        /** 
-        @public 
-        @this {RegExpLexer} 
+        /**
+        @public
+        @this {RegExpLexer}
         */
         describeYYLLOC: function lexer_describe_yylloc(yylloc, display_range_too) {
             var l1 = yylloc.first_line;
@@ -1712,9 +1713,9 @@ function getRegExpLexerPrototype() {
         // - matches
         // - yylloc
         // - offset
-        /** 
-        @public 
-        @this {RegExpLexer} 
+        /**
+        @public
+        @this {RegExpLexer}
         */
         test_match: function lexer_test_match(match, indexed_rule, parseParams) {
             var token,
@@ -1811,9 +1812,9 @@ function getRegExpLexerPrototype() {
         },
 
         // return next match in input
-        /** 
-        @public 
-        @this {RegExpLexer} 
+        /**
+        @public
+        @this {RegExpLexer}
         */
         next: function lexer_next(parseParams) {
             if (this.done) {
@@ -1913,9 +1914,9 @@ function getRegExpLexerPrototype() {
         },
 
         // return next match that has a token
-        /** 
-        @public 
-        @this {RegExpLexer} 
+        /**
+        @public
+        @this {RegExpLexer}
         */
         lex: function lexer_lex(parseParams) {
             var r;
@@ -1936,18 +1937,18 @@ function getRegExpLexerPrototype() {
         // backwards compatible alias for `pushState()`;
         // the latter is symmetrical with `popState()` and we advise to use
         // those APIs in any modern lexer code, rather than `begin()`.
-        /** 
-        @public 
-        @this {RegExpLexer} 
+        /**
+        @public
+        @this {RegExpLexer}
         */
         begin: function lexer_begin(condition) {
             return this.pushState(condition);
         },
 
         // activates a new lexer condition state (pushes the new lexer condition state onto the condition stack)
-        /** 
-        @public 
-        @this {RegExpLexer} 
+        /**
+        @public
+        @this {RegExpLexer}
         */
         pushState: function lexer_pushState(condition) {
             this.conditionStack.push(condition);
@@ -1956,9 +1957,9 @@ function getRegExpLexerPrototype() {
         },
 
         // pop the previously active lexer condition state off the condition stack
-        /** 
-        @public 
-        @this {RegExpLexer} 
+        /**
+        @public
+        @this {RegExpLexer}
         */
         popState: function lexer_popState() {
             var n = this.conditionStack.length - 1;
@@ -1971,9 +1972,9 @@ function getRegExpLexerPrototype() {
         },
 
         // return the currently active lexer condition state; when an index argument is provided it produces the N-th previous condition state, if available
-        /** 
-        @public 
-        @this {RegExpLexer} 
+        /**
+        @public
+        @this {RegExpLexer}
         */
         topState: function lexer_topState(n) {
             n = this.conditionStack.length - 1 - Math.abs(n || 0);
@@ -1985,9 +1986,9 @@ function getRegExpLexerPrototype() {
         },
 
         // (internal) determine the lexer rule set which is active for the currently active lexer condition state
-        /** 
-        @public 
-        @this {RegExpLexer} 
+        /**
+        @public
+        @this {RegExpLexer}
         */
         _currentRules: function lexer__currentRules() {
             if (this.conditionStack.length && this.conditionStack[this.conditionStack.length - 1]) {
@@ -1998,9 +1999,9 @@ function getRegExpLexerPrototype() {
         },
 
         // return the number of states currently on the stack
-        /** 
-        @public 
-        @this {RegExpLexer} 
+        /**
+        @public
+        @this {RegExpLexer}
         */
         stateStackSize: function lexer_stateStackSize() {
             return this.conditionStack.length;
@@ -2035,7 +2036,7 @@ function expandParseArguments(parseFn, options) {
 
 
 // The lexer code stripper, driven by optimization analysis settings and
-// lexer options, which cannot be changed at run-time:
+// lexer options, which cannot be changed at run-time.
 function stripUnusedLexerCode(src, options) {
     return src;
 }
