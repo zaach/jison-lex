@@ -1381,6 +1381,16 @@ function getRegExpLexerPrototype() {
             this.matches = false;
             this._more = false;
             this._backtrack = false;
+
+            var col = this.yylloc ? this.yylloc.last_column : 0;
+            this.yylloc = {
+                first_line: this.yylineno + 1,
+                first_column: col,
+                last_line: this.yylineno + 1,
+                last_column: col,
+
+                range: (this.options.ranges ? [this.offset, this.offset] : undefined)
+            }
         },
 
         // resets the lexer, sets new input
@@ -1444,11 +1454,10 @@ function getRegExpLexerPrototype() {
                 first_line: 1,
                 first_column: 0,
                 last_line: 1,
-                last_column: 0
+                last_column: 0,
+
+                range: (this.options.ranges ? [0, 0] : undefined)
             };
-            if (this.options.ranges) {
-                this.yylloc.range = [0, 0];
-            }
             this.offset = 0;
             return this;
         },
@@ -1496,6 +1505,7 @@ function getRegExpLexerPrototype() {
             if (lines) {
                 this.yylineno++;
                 this.yylloc.last_line++;
+                this.yylloc.last_column = 0;
             } else {
                 this.yylloc.last_column++;
             }
@@ -1518,26 +1528,29 @@ function getRegExpLexerPrototype() {
 
             this._input = ch + this._input;
             this.yytext = this.yytext.substr(0, this.yytext.length - len);
-            //this.yyleng -= len;
+            this.yyleng = this.yytext.length;
             this.offset -= len;
-            var oldLines = this.match.split(/(?:\r\n?|\n)/g);
             this.match = this.match.substr(0, this.match.length - len);
             this.matched = this.matched.substr(0, this.matched.length - len);
 
-            if (lines.length - 1) {
+            if (lines.length > 1) {
                 this.yylineno -= lines.length - 1;
-            }
 
-            this.yylloc.last_line = this.yylineno + 1;
-            this.yylloc.last_column = (lines ?
-                    (lines.length === oldLines.length ? this.yylloc.first_column : 0)
-                    + oldLines[oldLines.length - lines.length].length - lines[0].length :
-                    this.yylloc.first_column - len);
+                this.yylloc.last_line = this.yylineno + 1;
+                var pre = this.match;
+                var pre_lines = pre.split(/(?:\r\n?|\n)/g);
+                if (pre_lines.length === 1) {
+                    pre = this.matched;
+                    pre_lines = pre.split(/(?:\r\n?|\n)/g);
+                }
+                this.yylloc.last_column = pre_lines[pre_lines.length - 1].length;
+            } else {
+                this.yylloc.last_column -= len;
+            }
 
             if (this.options.ranges) {
-                this.yylloc.range[1] = this.yylloc.range[0] + this.yyleng - len;
+                this.yylloc.range[1] = this.yylloc.range[0] + this.yyleng;
             }
-            this.yyleng = this.yytext.length;
             this.done = false;
             return this;
         },
@@ -1674,13 +1687,13 @@ function getRegExpLexerPrototype() {
             var l1 = yylloc.first_line;
             var l2 = yylloc.last_line;
             var o1 = yylloc.first_column;
-            var o2 = yylloc.last_column - 1;
+            var o2 = yylloc.last_column;
             var dl = l2 - l1;
-            var d_o = (dl === 0 ? o2 - o1 : 1000);
+            var d_o = o2 - o1;
             var rv;
             if (dl === 0) {
                 rv = 'line ' + l1 + ', ';
-                if (d_o === 0) {
+                if (d_o === 1) {
                     rv += 'column ' + o1;
                 } else {
                     rv += 'columns ' + o1 + ' .. ' + o2;
@@ -1730,9 +1743,11 @@ function getRegExpLexerPrototype() {
                     yylineno: this.yylineno,
                     yylloc: {
                         first_line: this.yylloc.first_line,
-                        last_line: this.last_line,
+                        last_line: this.yylloc.last_line,
                         first_column: this.yylloc.first_column,
-                        last_column: this.yylloc.last_column
+                        last_column: this.yylloc.last_column,
+
+                        range: (this.options.ranges ? this.yylloc.range.slice(0) :  undefined)
                     },
                     yytext: this.yytext,
                     match: this.match,
@@ -1742,37 +1757,32 @@ function getRegExpLexerPrototype() {
                     offset: this.offset,
                     _more: this._more,
                     _input: this._input,
+                    //_signaled_error_token: this._signaled_error_token,
                     yy: this.yy,
                     conditionStack: this.conditionStack.slice(0),
                     done: this.done
                 };
-                if (this.options.ranges) {
-                    backup.yylloc.range = this.yylloc.range.slice(0);
-                }
             }
 
             match_str = match[0];
             match_str_len = match_str.length;
             // if (match_str.indexOf('\n') !== -1 || match_str.indexOf('\r') !== -1) {
-                lines = match_str.match(/(?:\r\n?|\n).*/g);
-                if (lines) {
-                    this.yylineno += lines.length;
+                lines = match_str.split(/(?:\r\n?|\n)/g);
+                if (lines.length > 1) {
+                    this.yylineno += lines.length - 1;
+
+                    this.yylloc.last_line = this.yylineno + 1,
+                    this.yylloc.last_column = lines[lines.length - 1].length;
+                } else {
+                    this.yylloc.last_column += match_str_len;
                 }
             // }
-            this.yylloc = {
-                first_line: this.yylloc.last_line,
-                last_line: this.yylineno + 1,
-                first_column: this.yylloc.last_column,
-                last_column: lines ?
-                             lines[lines.length - 1].length - lines[lines.length - 1].match(/^\r?\n?/)[0].length :
-                             this.yylloc.last_column + match_str_len
-            };
             this.yytext += match_str;
             this.match += match_str;
             this.matches = match;
             this.yyleng = this.yytext.length;
             if (this.options.ranges) {
-                this.yylloc.range = [this.offset, this.offset + this.yyleng];
+                this.yylloc.range[1] += match_str_len;
             }
             // previous lex rules MAY have invoked the `more()` API rather than producing a token:
             // those rules will already have moved this `offset` forward matching their match lengths,

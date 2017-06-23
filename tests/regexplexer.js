@@ -1750,14 +1750,14 @@ describe("Lexer Kernel", function () {
                                     range: [1, 3]});
     prevloc = lexer.yylloc;
     assert.equal(lexer.lex(), lexer.EOF);
-    // forget about yylloc on EOF: its the same object as before...
-    assert.strictEqual(prevloc, lexer.yylloc);
-    // and this yylloc value set is counter-intuitive because EOF doesn't update yylloc at all:
+    // yylloc on EOF is NOT the same yylloc object as before: EOF is just another token, WITH its own yylloc info...
+    assert.notStrictEqual(prevloc, lexer.yylloc);
+    // and this yylloc value set is intuitive because EOF does update yylloc like any other lexed token:
     assert.deepEqual(lexer.yylloc, {first_line: 1,
-                                    first_column: 1,
+                                    first_column: 3,
                                     last_line: 1,
                                     last_column: 3,
-                                    range: [1, 3]});
+                                    range: [3, 3]});
   });
 
   it("test empty rule set with custom lexer", function() {
