@@ -30,6 +30,48 @@ function pad(n, p) {
 }
 
 
+function dumpSourceToFile(sourcecode, errname, err_id, options) {
+    // attempt to dump in one of several locations: first winner is *it*!
+    try {
+        var dumpPaths = [(options.outfile ? path.dirname(options.outfile) : null), options.inputPath, process.cwd()];
+        var dumpName = (options.inputFilename || options.moduleName || options.defaultModuleName || errname).replace(/[^a-z0-9_]/ig, "_");
+
+        var ts = new Date();
+        var tm = ts.getUTCFullYear() +
+            '_' + pad(ts.getUTCMonth() + 1) +
+            '_' + pad(ts.getUTCDate()) +
+            'T' + pad(ts.getUTCHours()) +
+            '' + pad(ts.getUTCMinutes()) +
+            '' + pad(ts.getUTCSeconds()) +
+            '.' + pad(ts.getUTCMilliseconds(), 3) +
+            'Z';
+
+        dumpName += '.fatal_' + err_id + '_dump_' + tm + '.js';
+
+        for (var i = 0, l = dumpPaths.length; i < l; i++) {
+            if (!dumpPaths[i]) {
+                continue;
+            }
+
+            try {
+                dumpfile = path.normalize(dumpPaths[i] + '/' + dumpName);
+                fs.writeFileSync(dumpfile, sourcecode, 'utf8');
+                console.error("****** offending generated " + errname + " source code dumped into file: ", dumpfile);
+                break;          // abort loop once a dump action was successful!
+            } catch (ex3) {
+                //console.error("generated " + errname + " source code fatal DUMPING error ATTEMPT: ", i, " = ", ex3.message, " -- while attempting to dump into file: ", dumpfile, "\n", ex3.stack);
+                if (i === l - 1) {
+                    throw ex3;
+                }
+            }
+        }
+    } catch (ex2) {
+        console.error("generated " + errname + " source code fatal DUMPING error: ", ex2.message, " -- while attempting to dump into file: ", dumpfile, "\n", ex2.stack);
+    }
+}
+
+
+
 
 //
 // `code_execution_rig` is a function which gets executed, while it is fed the `sourcecode` as a parameter.
@@ -67,49 +109,14 @@ function exec_and_diagnose_this_stuff(sourcecode, code_execution_rig, options, t
             throw new Error("safe-code-exec-and-diag: code_execution_rig MUST be a JavaScript function");
         }
         p = code_execution_rig.call(this, sourcecode, options, errname, debug);
+        dumpSourceToFile(sourcecode, errname + "_good", err_id + "_good", options);
     } catch (ex) {
         console.error("generated " + errname + " source code fatal error: ", ex.message);
 
         var dumpfile;
 
         if (options.dumpSourceCodeOnFailure) {
-            // attempt to dump in one of several locations: first winner is *it*!
-            try {
-                var dumpPaths = [(options.outfile ? path.dirname(options.outfile) : null), options.inputPath, process.cwd()];
-                var dumpName = (options.inputFilename || options.moduleName || options.defaultModuleName || errname).replace(/[^a-z0-9_]/ig, "_");
-
-                var ts = new Date();
-                var tm = ts.getUTCFullYear() +
-                    '_' + pad(ts.getUTCMonth() + 1) +
-                    '_' + pad(ts.getUTCDate()) +
-                    'T' + pad(ts.getUTCHours()) +
-                    '' + pad(ts.getUTCMinutes()) +
-                    '' + pad(ts.getUTCSeconds()) +
-                    '.' + pad(ts.getUTCMilliseconds(), 3) +
-                    'Z';
-
-                dumpName += '.fatal_' + err_id + '_dump_' + tm + '.js';
-
-                for (var i = 0, l = dumpPaths.length; i < l; i++) {
-                    if (!dumpPaths[i]) {
-                        continue;
-                    }
-
-                    try {
-                        dumpfile = path.normalize(dumpPaths[i] + '/' + dumpName);
-                        fs.writeFileSync(dumpfile, sourcecode, 'utf8');
-                        console.error("****** offending generated " + errname + " source code dumped into file: ", dumpfile);
-                        break;          // abort loop once a dump action was successful!
-                    } catch (ex3) {
-                        //console.error("generated " + errname + " source code fatal DUMPING error ATTEMPT: ", i, " = ", ex3.message, " -- while attempting to dump into file: ", dumpfile, "\n", ex3.stack);
-                        if (i === l - 1) {
-                            throw ex3;
-                        }
-                    }
-                }
-            } catch (ex2) {
-                console.error("generated " + errname + " source code fatal DUMPING error: ", ex2.message, " -- while attempting to dump into file: ", dumpfile, "\n", ex2.stack);
-            }
+            dumpSourceToFile(sourcecode, errname, err_id, options);
         }
 
         ex.offending_source_code = sourcecode;
