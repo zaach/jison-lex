@@ -185,7 +185,7 @@ describe("Lexer Kernel", function () {
       lexer.lex(); 
     }, 
     JisonLexerError,
-    /Lexical error on line [^]*?Unrecognized text/, "bad char");
+    /Lexical error on line \d+[^]*?Unrecognized text/, "bad char");
   });
 
   it("test if lexer continues correctly after having encountered an unrecognized char", function() {
@@ -1330,7 +1330,7 @@ describe("Lexer Kernel", function () {
       lexer.lex();
     },
     JisonLexerError,
-    /Lexical error on line [^]*?You can only invoke reject\(\) in the lexer when the lexer is of the backtracking persuasion/);
+    /Lexical error on line \d+[^]*?You can only invoke reject\(\) in the lexer when the lexer is of the backtracking persuasion/);
   });
 
   it("test yytext state after unput", function() {
