@@ -30,8 +30,10 @@ function pad(n, p) {
 }
 
 
-function dumpSourceToFile(sourcecode, errname, err_id, options) {
-    // attempt to dump in one of several locations: first winner is *it*!
+// attempt to dump in one of several locations: first winner is *it*!
+function dumpSourceToFile(sourcecode, errname, err_id, options, ex) {
+    var dumpfile;
+
     try {
         var dumpPaths = [(options.outfile ? path.dirname(options.outfile) : null), options.inputPath, process.cwd()];
         var dumpName = (options.inputFilename || options.moduleName || options.defaultModuleName || errname).replace(/[^a-z0-9_]/ig, "_");
@@ -68,6 +70,13 @@ function dumpSourceToFile(sourcecode, errname, err_id, options) {
     } catch (ex2) {
         console.error("generated " + errname + " source code fatal DUMPING error: ", ex2.message, " -- while attempting to dump into file: ", dumpfile, "\n", ex2.stack);
     }
+
+    // augment the exception info, when available:
+    if (ex) {
+        ex.offending_source_code = sourcecode;
+        ex.offending_source_title = errname;
+        ex.offending_source_dumpfile = dumpfile;
+    }    
 }
 
 
@@ -109,19 +118,12 @@ function exec_and_diagnose_this_stuff(sourcecode, code_execution_rig, options, t
             throw new Error("safe-code-exec-and-diag: code_execution_rig MUST be a JavaScript function");
         }
         p = code_execution_rig.call(this, sourcecode, options, errname, debug);
-        dumpSourceToFile(sourcecode, errname + "_good", err_id + "_good", options);
     } catch (ex) {
         console.error("generated " + errname + " source code fatal error: ", ex.message);
 
-        var dumpfile;
-
         if (options.dumpSourceCodeOnFailure) {
-            dumpSourceToFile(sourcecode, errname, err_id, options);
+            dumpSourceToFile(sourcecode, errname, err_id, options, ex);
         }
-
-        ex.offending_source_code = sourcecode;
-        ex.offending_source_title = errname;
-        ex.offending_source_dumpfile = dumpfile;
         
         if (options.throwErrorOnCompileFailure) {
             throw ex;
