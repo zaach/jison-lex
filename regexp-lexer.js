@@ -41,7 +41,7 @@ const defaultJisonLexOptions = {
     debug: false,
     enableDebugLogs: false,
     json: false,
-    main: false,                  // CLI: not:(--main option)
+    main: false,                    // CLI: not:(--main option)
     dumpSourceCodeOnFailure: true,
     throwErrorOnCompileFailure: true,
 
@@ -51,14 +51,15 @@ const defaultJisonLexOptions = {
     outfile: undefined,
     inputPath: undefined,
     inputFilename: undefined,
-    warn_cb: undefined,  // function(msg) | true (= use Jison.Print) | false (= throw Exception)
+    warn_cb: undefined,             // function(msg) | true (= use Jison.Print) | false (= throw Exception)
 
     parseParams: undefined,
     xregexp: false,
-    lexer_errors_are_recoverable: false,
+    lexerErrorsAreRecoverable: false,
     flex: false,
     backtrack_lexer: false,
-    ranges: undefined,
+    ranges: false,                  // track position range, i.e. start+end indexes in the input string
+    trackPosition: true,            // track line+column position in the input string
     caseInsensitive: false,
     showSource: false,
     pre_lex: undefined,
@@ -1581,7 +1582,11 @@ function getRegExpLexerPrototype() {
                 // when the `parseError()` call returns, we MUST ensure that the error is registered.
                 // We accomplish this by signaling an 'error' token to be produced for the current
                 // `.lex()` run.
-                var p = this.constructLexErrorInfo('Lexical error on line ' + (this.yylineno + 1) + ': You can only invoke reject() in the lexer when the lexer is of the backtracking persuasion (options.backtrack_lexer = true).\n' + this.showPosition(), false);
+                var lineno_msg = '';
+                if (this.options.trackPosition) {
+                    lineno_msg = ' on line ' + (this.yylineno + 1);
+                }
+                var p = this.constructLexErrorInfo('Lexical error' + lineno_msg + ': You can only invoke reject() in the lexer when the lexer is of the backtracking persuasion (options.backtrack_lexer = true).\n' + this.showPosition(), false);
                 this._signaled_error_token = (this.parseError(p.errStr, p, this.JisonLexerError) || this.ERROR);
             }
             return this;
@@ -1856,7 +1861,11 @@ function getRegExpLexerPrototype() {
                 // Check whether a *sane* condition has been pushed before: this makes the lexer robust against
                 // user-programmer bugs such as https://github.com/zaach/jison-lex/issues/19
                 if (!spec || !spec.rules) {
-                    var p = this.constructLexErrorInfo('Internal lexer engine error on line ' + (this.yylineno + 1) + ': The lex grammar programmer pushed a non-existing condition name "' + this.topState() + '"; this is a fatal error and should be reported to the application programmer team!\n', false);
+                    var lineno_msg = '';
+                    if (this.options.trackPosition) {
+                        lineno_msg = ' on line ' + (this.yylineno + 1);
+                    }
+                    var p = this.constructLexErrorInfo('Internal lexer engine error' + lineno_msg + ': The lex grammar programmer pushed a non-existing condition name "' + this.topState() + '"; this is a fatal error and should be reported to the application programmer team!\n', false);
                     // produce one 'error' token until this situation has been resolved, most probably by parse termination!
                     return (this.parseError(p.errStr, p, this.JisonLexerError) || this.ERROR);
                 }
@@ -1867,21 +1876,9 @@ function getRegExpLexerPrototype() {
             var regexes = spec.__rule_regexes;
             var len = spec.__rule_count;
 
-            //var c0 = this._input[0];
-
             // Note: the arrays are 1-based, while `len` itself is a valid index,
             // hence the non-standard less-or-equal check in the next loop condition!
-            //
-            // `dispatch` is a lookup table which lists the *first* rule which matches the 1-char *prefix* of the rule-to-match.
-            // By using that array as a jumpstart, we can cut down on the otherwise O(n*m) behaviour of this lexer, down to
-            // O(n) ideally, where:
-            //
-            // - N is the number of input particles -- which is not precisely characters
-            //   as we progress on a per-regex-match basis rather than on a per-character basis
-            //
-            // - M is the number of rules (regexes) to test in the active condition state.
-            //
-            for (var i = 1 /* (dispatch[c0] || 1) */ ; i <= len; i++) {
+            for (var i = 1; i <= len; i++) {
                 tempMatch = this._input.match(regexes[i]);
                 if (tempMatch && (!match || tempMatch[0].length > match[0].length)) {
                     match = tempMatch;
@@ -1910,11 +1907,16 @@ function getRegExpLexerPrototype() {
                 // else: this is a lexer rule which consumes input without producing a token (e.g. whitespace)
                 return false;
             }
-            if (this._input === '') {
+            if (!this._input) {
                 this.done = true;
+                this.clear();
                 return this.EOF;
             } else {
-                var p = this.constructLexErrorInfo('Lexical error on line ' + (this.yylineno + 1) + ': Unrecognized text.\n' + this.showPosition(), this.options.lexer_errors_are_recoverable);
+                var lineno_msg = '';
+                if (this.options.trackPosition) {
+                    lineno_msg = ' on line ' + (this.yylineno + 1);
+                }
+                var p = this.constructLexErrorInfo('Lexical error' + lineno_msg + ': Unrecognized text.\n' + this.showPosition(), this.options.lexerErrorsAreRecoverable);
                 token = (this.parseError(p.errStr, p, this.JisonLexerError) || this.ERROR);
                 if (token === this.ERROR) {
                     // we can try to recover from a lexer error that `parseError()` did not 'recover' for us
@@ -2202,7 +2204,7 @@ function generateModuleBody(opt) {
           defaultModuleName: 1,
           moduleName: 1,
           moduleType: 1,
-          lexer_errors_are_recoverable: 0,
+          lexerErrorsAreRecoverable: 0,
           flex: 0,
           backtrack_lexer: 0,
           caseInsensitive: 0,
@@ -2303,8 +2305,9 @@ var lexer = {
     //
     // Options:
     //
-    //   backtracking:        ${opt.options.backtrack_lexer}
-    //   location.ranges:     ${opt.options.ranges}
+    //   backtracking: .................... ${opt.options.backtrack_lexer}
+    //   location.ranges: ................. ${opt.options.ranges}
+    //   location line+column tracking: ... ${opt.options.trackPosition}
     //
     //
     // Forwarded Parser Analysis flags:
