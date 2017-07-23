@@ -1467,6 +1467,48 @@ function getRegExpLexerPrototype() {
             return this;
         },
 
+        // push a new input into the lexer and activate it:
+        // the old input position is stored and will be resumed
+        // once this new input has been consumed.
+        //
+        // Use this API to help implement C-preprocessor-like
+        // `#include` statements.
+        //
+        // Available options:
+        // - emit_EOF_at_end : {int} the `EOF`-like token to emit 
+        //                     when the new input is consumed: use
+        //                     this to mark the end of the new input
+        //                     in the parser grammar. zero/falsey 
+        //                     token value means no end marker token
+        //                     will be emitted before the lexer 
+        //                     resumes reading from the previous input.
+        /**
+        @public
+        @this {RegExpLexer}
+        */
+        pushInput: function lexer_pushInput(input, label, options) {
+            options = options || {};
+
+            this._input = input || '';
+            this.clear();
+            // this._signaled_error_token = false;
+            this.done = false;
+            this.yylineno = 0;
+            this.matched = '';
+            // this.conditionStack = ['INITIAL'];
+            // this.__currentRuleSet__ = null;
+            this.yylloc = {
+                first_line: 1,
+                first_column: 0,
+                last_line: 1,
+                last_column: 0,
+
+                range: (this.options.ranges ? [0, 0] : undefined)
+            };
+            this.offset = 0;
+            return this;
+        },
+
         // consumes and returns one char from the input
         /**
         @public
