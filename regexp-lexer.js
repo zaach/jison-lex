@@ -2334,14 +2334,22 @@ function generateModuleBody(opt) {
         var pre = obj.pre_lex;
         var post = obj.post_lex;
         // since JSON cannot encode functions, we'll have to do it manually at run-time, i.e. later on:
-        obj.pre_lex = (pre ? true : undefined);
-        obj.post_lex = (post ? true : undefined);
+        if (pre) {
+            obj.pre_lex = true;
+        }
+        if (post) {
+            obj.post_lex = true;
+        }
 
         var js = JSON.stringify(obj, null, 2);
 
         js = js.replace(new XRegExp('  "([\\p{Alphabetic}_][\\p{Alphabetic}_\\p{Number}]*)": ', 'g'), '  $1: ');
-        js = js.replace(/^( +)pre_lex: true,$/gm, "$1pre_lex: " + String(pre) + ',');
-        js = js.replace(/^( +)post_lex: true,$/gm, "$1post_lex: " + String(post) + ',');
+        js = js.replace(/^( +)pre_lex: true(,)?$/gm, function (m, ls, tc) {
+            return ls + 'pre_lex: ' + String(pre) + (tc || '');
+        });
+        js = js.replace(/^( +)post_lex: true(,)?$/gm, function (m, ls, tc) {
+            return ls + 'post_lex: ' + String(post) + (tc || '');
+        });
         return js;
     }
 
