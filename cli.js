@@ -222,8 +222,9 @@ cli.generateLexerString = function generateLexerString(lexerSpec, opts) {
     'use strict';
 
     // var settings = RegExpLexer.mkStdOptions(opts);
+    var predefined_tokens = null;
 
-    return RegExpLexer.generate(lexerSpec, null, opts);
+    return RegExpLexer.generate(lexerSpec, predefined_tokens, opts);
 };
 
 

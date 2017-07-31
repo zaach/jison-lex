@@ -921,7 +921,7 @@ function buildActions(dict, tokens, opts) {
     var gen = prepareRules(dict, actions, caseHelper, tokens && toks, opts.conditions, opts);
 
     var fun = actions.join('\n');
-    'yytext yyleng yylineno yylloc'.split(' ').forEach(function (yy) {
+    'yytext yyleng yylineno yylloc yyerror'.split(' ').forEach(function (yy) {
         fun = fun.replace(new RegExp('\\b(' + yy + ')\\b', 'g'), 'yy_.$1');
     });
 
@@ -1343,6 +1343,28 @@ function getRegExpLexerPrototype() {
             } else {
                 throw new ExceptionClass(str, hash);
             }
+        },
+
+        /**
+        method which implements `yyerror(str, ...args)` functionality for use inside lexer actions.
+
+        @public
+        @this {RegExpLexer}
+        */
+        yyerror: function yyError(str /*, ...args */) {
+            var lineno_msg = '';
+            if (this.options.trackPosition) {
+                lineno_msg = ' on line ' + (this.yylineno + 1);
+            }
+            var p = this.constructLexErrorInfo('Lexical error' + lineno_msg + ': ' + str, this.options.lexerErrorsAreRecoverable);
+
+            // Add any extra args to the hash under the name `extra_error_attributes`:
+            var args = Array.prototype.slice.call(arguments, 1);
+            if (args.length) {
+                hash.extra_error_attributes = args;
+            }
+
+            return (this.parseError(p.errStr, p, this.JisonLexerError) || this.ERROR);
         },
 
         /**
