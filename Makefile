@@ -29,6 +29,7 @@ git-tag:
 
 clean:
 	-rm -rf node_modules/
+	-rm -f package-lock.json
 	-rm -rf examples/output/
 
 superclean: clean
