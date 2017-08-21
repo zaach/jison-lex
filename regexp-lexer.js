@@ -1338,13 +1338,14 @@ function getRegExpLexerPrototype() {
             if (!ExceptionClass) {
                 ExceptionClass = this.JisonLexerError;
             }
-            if (this.yy.parser && typeof this.yy.parser.parseError === 'function') {
-                return this.yy.parser.parseError(str, hash, ExceptionClass) || this.ERROR;
-            } else if (typeof this.yy.parseError === 'function') {
-                return this.yy.parseError(str, hash, ExceptionClass) || this.ERROR;
-            } else {
-                throw new ExceptionClass(str, hash);
+            if (this.yy) {
+                if (this.yy.parser && typeof this.yy.parser.parseError === 'function') {
+                    return this.yy.parser.parseError(str, hash, ExceptionClass) || this.ERROR;
+                } else if (typeof this.yy.parseError === 'function') {
+                    return this.yy.parseError(str, hash, ExceptionClass) || this.ERROR;
+                } 
             }
+            throw new ExceptionClass(str, hash);
         },
 
         /**
