@@ -1371,7 +1371,7 @@ function getRegExpLexerPrototype() {
             // Add any extra args to the hash under the name `extra_error_attributes`:
             var args = Array.prototype.slice.call(arguments, 1);
             if (args.length) {
-                hash.extra_error_attributes = args;
+                p.extra_error_attributes = args;
             }
 
             return (this.parseError(p.errStr, p, this.JisonLexerError) || this.ERROR);
