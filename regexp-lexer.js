@@ -2317,6 +2317,7 @@ function processGrammar(dict, tokens, build_options) {
         parseActionsUseParseError: build_options.parseActionsUseParseError,
         parseActionsUseYYERROR: build_options.parseActionsUseYYERROR,
         parseActionsUseYYERROK: build_options.parseActionsUseYYERROK,
+        parseActionsUseYYRECOVERING: build_options.parseActionsUseYYRECOVERING,
         parseActionsUseYYCLEARIN: build_options.parseActionsUseYYCLEARIN,
         parseActionsUseValueTracking: build_options.parseActionsUseValueTracking,
         parseActionsUseValueAssignment: build_options.parseActionsUseValueAssignment,
@@ -2325,7 +2326,22 @@ function processGrammar(dict, tokens, build_options) {
         parseActionsUseYYSTACK: build_options.parseActionsUseYYSTACK,
         parseActionsUseYYSSTACK: build_options.parseActionsUseYYSSTACK,
         parseActionsUseYYSTACKPOINTER: build_options.parseActionsUseYYSTACKPOINTER,
+        parseActionsUseYYRULELENGTH: build_options.parseActionsUseYYRULELENGTH,
         parserHasErrorRecovery: build_options.parserHasErrorRecovery,
+
+        lexerActionsUseYYLENG: '???',
+        lexerActionsUseYYLINENO: '???',
+        lexerActionsUseYYTEXT: '???',
+        lexerActionsUseYYLOC: '???',
+        lexerActionsUseParseError: '???',
+        lexerActionsUseYYERROR: '???',
+        lexerActionsUseLocationTracking: '???',
+        lexerActionsUseMore: '???',
+        lexerActionsUseUnput: '???',
+        lexerActionsUseReject: '???',
+        lexerActionsUseLess: '???',
+        lexerActionsUseDisplayAPIs: '???',
+        lexerActionsUseDescribeYYLOC: '???',
     };
 
     dict = autodetectAndConvertToJSONformat(dict, build_options) || {};
@@ -2352,6 +2368,9 @@ function processGrammar(dict, tokens, build_options) {
     opts.caseHelperInclude = code.caseHelperInclude;
     opts.rules = code.rules;
     opts.macros = code.macros;
+
+    opts.regular_rule_count = code.regular_rule_count;
+    opts.simple_rule_count = code.simple_rule_count;
 
     opts.conditionStack = ['INITIAL'];
 
@@ -2445,6 +2464,7 @@ function generateModuleBody(opt) {
           parseActionsUseYYLOC: 1,
           parseActionsUseParseError: 1,
           parseActionsUseYYERROR: 1,
+          parseActionsUseYYRECOVERING: 1,
           parseActionsUseYYERROK: 1,
           parseActionsUseYYCLEARIN: 1,
           parseActionsUseValueTracking: 1,
@@ -2454,7 +2474,21 @@ function generateModuleBody(opt) {
           parseActionsUseYYSTACK: 1,
           parseActionsUseYYSSTACK: 1,
           parseActionsUseYYSTACKPOINTER: 1,
+          parseActionsUseYYRULELENGTH: 1,
           parserHasErrorRecovery: 1,
+          lexerActionsUseYYLENG: 1,
+          lexerActionsUseYYLINENO: 1,
+          lexerActionsUseYYTEXT: 1,
+          lexerActionsUseYYLOC: 1,
+          lexerActionsUseParseError: 1,
+          lexerActionsUseYYERROR: 1,
+          lexerActionsUseLocationTracking: 1,
+          lexerActionsUseMore: 1,
+          lexerActionsUseUnput: 1,
+          lexerActionsUseReject: 1,
+          lexerActionsUseLess: 1,
+          lexerActionsUseDisplayAPIs: 1,
+          lexerActionsUseDescribeYYLOC: 1,
         };
         for (var k in opts) {
             if (!do_not_pass[k] && opts[k] != null && opts[k] !== false) {
@@ -2544,6 +2578,10 @@ var lexer = {
         // Meanwhile we make sure we have the `lexer` variable declared in *local scope* no matter
         // what crazy stuff (or lack thereof) the userland code is pulling in the `actionInclude` chunk.
         out = 'var lexer;\n';
+
+        assert(opt.regular_rule_count === 0);
+        assert(opt.simple_rule_count === 0);
+        opt.is_custom_lexer = true;
 
         if (opt.actionInclude) {
             out += opt.actionInclude + (!opt.actionInclude.match(/;[\s\r\n]*$/) ? ';' : '') + '\n';
