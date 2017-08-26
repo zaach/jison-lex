@@ -1805,7 +1805,7 @@ function getRegExpLexerPrototype() {
             if (yylloc.range && display_range_too) {
                 var r1 = yylloc.range[0];
                 var r2 = yylloc.range[1] - 1;
-                if (r2 === r1) {
+                if (r2 <= r1) {
                     rv += ' {String Offset: ' + r1 + '}';
                 } else {
                     rv += ' {String Offset range: ' + r1 + ' .. ' + r2 + '}';
