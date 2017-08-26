@@ -469,7 +469,7 @@ describe("Lexer Kernel", function () {
     assert.equal(lexer.yylloc.last_line, 1);
     assert.equal(lexer.yylloc.first_column, 0);
     assert.equal(lexer.yylloc.last_column, 1);
-    assert.ok(lexer.yylloc.range === undefined);
+    //assert.ok(lexer.yylloc.range === undefined);
     assert.equal(lexer.lex(), "x");
     assert.equal(lexer.yytext, "x", "yytext");
     assert.equal(lexer.yyleng, 1, "yyleng");
