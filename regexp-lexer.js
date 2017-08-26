@@ -255,7 +255,7 @@ function prepareRules(dict, actions, caseHelper, tokens, startConditions, opts) 
         return str;
     }
 
-    actions.push('switch($avoiding_name_collisions) {');
+    actions.push('switch(yyrulenumber) {');
 
     for (i = 0; i < rules.length; i++) {
         rule = rules[i];
@@ -338,7 +338,7 @@ function prepareRules(dict, actions, caseHelper, tokens, startConditions, opts) 
         }
     }
     actions.push('default:');
-    actions.push('  return this.simpleCaseActionClusters[$avoiding_name_collisions];');
+    actions.push('  return this.simpleCaseActionClusters[yyrulenumber];');
     actions.push('}');
 
     return {
@@ -929,7 +929,9 @@ function buildActions(dict, tokens, opts) {
     return {
         caseHelperInclude: '{\n' + caseHelper.join(',') + '\n}',
 
-        actions: expandParseArguments('function lexer__performAction(yy, yy_, $avoiding_name_collisions, YY_START) {\n', opts) + fun + '\n}',
+        actions: `function lexer__performAction(yy, yy_, yyrulenumber, YY_START) {
+            ${fun}
+        }`,
 
         rules: gen.rules,
         macros: gen.macros,                   // propagate these for debugging/diagnostic purposes
@@ -1895,7 +1897,7 @@ function getRegExpLexerPrototype() {
 
             // calling this method:
             //
-            //   function lexer__performAction(yy, yy_, $avoiding_name_collisions, YY_START) {...}
+            //   function lexer__performAction(yy, yy_, yyrulenumber, YY_START) {...}
             token = this.performAction.call(this, this.yy, this, indexed_rule, this.conditionStack[this.conditionStack.length - 1] /* = YY_START */);
             // otherwise, when the action codes are all simple return token statements:
             //token = this.simpleCaseActionClusters[indexed_rule];
