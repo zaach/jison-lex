@@ -33,6 +33,8 @@
     "json5": "github:GerHobbelt/json5#master",
     "lex-parser": "github:GerHobbelt/lex-parser#master",
     "nomnom": "github:GerHobbelt/nomnom#master",
+    "recast": "github:GerHobbelt/recast#master",
+    "ast-util": "github:GerHobbelt/ast-util#master",
     "xregexp": "github:GerHobbelt/xregexp#master"
   },
   "devDependencies": {
