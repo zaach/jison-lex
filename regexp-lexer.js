@@ -9,7 +9,7 @@ var json5 = require('json5');
 var lexParser = require('lex-parser');
 var setmgmt = require('./regexp-set-management');
 var code_exec = require('./safe-code-exec-and-diag');
-var version = '0.3.4-186';                              // require('./package.json').version;
+var version = '0.6.0-186';                              // require('./package.json').version;
 var assert = require('assert');
 
 
@@ -53,7 +53,6 @@ const defaultJisonLexOptions = {
     inputFilename: undefined,
     warn_cb: undefined,             // function(msg) | true (= use Jison.Print) | false (= throw Exception)
 
-    parseParams: undefined,
     xregexp: false,
     lexerErrorsAreRecoverable: false,
     flex: false,
@@ -930,7 +929,7 @@ function buildActions(dict, tokens, opts) {
     return {
         caseHelperInclude: '{\n' + caseHelper.join(',') + '\n}',
 
-        actions: expandParseArguments('function lexer__performAction(yy, yy_, $avoiding_name_collisions, YY_START, parseParams) {\n', opts) + fun + '\n}',
+        actions: expandParseArguments('function lexer__performAction(yy, yy_, $avoiding_name_collisions, YY_START) {\n', opts) + fun + '\n}',
 
         rules: gen.rules,
         macros: gen.macros,                   // propagate these for debugging/diagnostic purposes
@@ -1832,7 +1831,7 @@ function getRegExpLexerPrototype() {
         @public
         @this {RegExpLexer}
         */
-        test_match: function lexer_test_match(match, indexed_rule, parseParams) {
+        test_match: function lexer_test_match(match, indexed_rule) {
             var token,
                 lines,
                 backup,
@@ -1897,7 +1896,7 @@ function getRegExpLexerPrototype() {
             // calling this method:
             //
             //   function lexer__performAction(yy, yy_, $avoiding_name_collisions, YY_START) {...}
-            token = this.performAction.call(this, this.yy, this, indexed_rule, this.conditionStack[this.conditionStack.length - 1] /* = YY_START */, parseParams);
+            token = this.performAction.call(this, this.yy, this, indexed_rule, this.conditionStack[this.conditionStack.length - 1] /* = YY_START */);
             // otherwise, when the action codes are all simple return token statements:
             //token = this.simpleCaseActionClusters[indexed_rule];
 
@@ -1928,7 +1927,7 @@ function getRegExpLexerPrototype() {
         @public
         @this {RegExpLexer}
         */
-        next: function lexer_next(parseParams) {
+        next: function lexer_next() {
             if (this.done) {
                 this.clear();
                 return this.EOF;
@@ -1981,7 +1980,7 @@ function getRegExpLexerPrototype() {
                     match = tempMatch;
                     index = i;
                     if (this.options.backtrack_lexer) {
-                        token = this.test_match(tempMatch, rule_ids[i], parseParams);
+                        token = this.test_match(tempMatch, rule_ids[i]);
                         if (token !== false) {
                             return token;
                         } else if (this._backtrack) {
@@ -1997,7 +1996,7 @@ function getRegExpLexerPrototype() {
                 }
             }
             if (match) {
-                token = this.test_match(match, rule_ids[index], parseParams);
+                token = this.test_match(match, rule_ids[index]);
                 if (token !== false) {
                     return token;
                 }
@@ -2036,18 +2035,18 @@ function getRegExpLexerPrototype() {
         @public
         @this {RegExpLexer}
         */
-        lex: function lexer_lex(parseParams) {
+        lex: function lexer_lex() {
             var r;
             // allow the PRE/POST handlers set/modify the return token for maximum flexibility of the generated lexer:
             if (typeof this.options.pre_lex === 'function') {
-                r = this.options.pre_lex.call(this, parseParams);
+                r = this.options.pre_lex.call(this);
             }
             while (!r) {
-                r = this.next(parseParams);
+                r = this.next();
             }
             if (typeof this.options.post_lex === 'function') {
                 // (also account for a userdef function which does not return any value: keep the token as is)
-                r = this.options.post_lex.call(this, r, parseParams) || r;
+                r = this.options.post_lex.call(this, r) || r;
             }
             return r;
         },
@@ -2138,27 +2137,6 @@ RegExpLexer.prototype = getRegExpLexerPrototype();
 
 
 
-// Fill in the optional, extra parse parameters (`%parse-param ...`)
-// in the generated *lexer*.
-//
-// See for important context:
-//
-//     https://github.com/zaach/jison/pull/332
-function expandParseArguments(parseFn, options) {
-    var arglist = (options && options.parseParams);
-
-    if (!arglist) {
-        parseFn = parseFn.replace(/, parseParams\b/g, '');
-        parseFn = parseFn.replace(/\bparseParams\b/g, '');
-    } else {
-        parseFn = parseFn.replace(/, parseParams\b/g, ', ' + arglist.join(', '));
-        parseFn = parseFn.replace(/\bparseParams\b/g, arglist.join(', '));
-    }
-    return parseFn;
-}
-
-
-
 // The lexer code stripper, driven by optimization analysis settings and
 // lexer options, which cannot be changed at run-time.
 function stripUnusedLexerCode(src, options) {
@@ -2216,8 +2194,6 @@ function processGrammar(dict, tokens, build_options) {
     // Always provide the lexer with an options object, even if it's empty!
     // Make sure to camelCase all options:
     opts.options = mkStdOptions(build_options, dict.options);
-
-    opts.parseParams = opts.options.parseParams;
 
     opts.moduleType = opts.options.moduleType;
     opts.moduleName = opts.options.moduleName;
@@ -2391,7 +2367,6 @@ var lexer = {
         protosrc = protosrc
         .replace(/^[\s\r\n]*return[\s\r\n]*\{/, '')
         .replace(/\s*\};[\s\r\n]*$/, '');
-        protosrc = expandParseArguments(protosrc, opt.options);
         protosrc = stripUnusedLexerCode(protosrc, opt);
         code.push(protosrc + ',\n');
 
