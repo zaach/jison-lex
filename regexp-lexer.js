@@ -29,6 +29,12 @@ const DIGIT_SETSTR = setmgmt.DIGIT_SETSTR;
 // `/\w/`:
 const WORDCHAR_SETSTR = setmgmt.WORDCHAR_SETSTR;
 
+// WARNING: this regex MUST match the regex for `ID` in ebnf-parser::bnf.l jison language lexer spec! (`ID = [{ALPHA}]{ALNUM}*`)
+//
+// This is the base XRegExp ID regex used in many places; this should match the ID macro definition in the EBNF/BNF parser et al as well!
+const ID_REGEX_BASE = '[\\p{Alphabetic}_][\\p{Alphabetic}_\\p{Number}]*';
+
+
 
 
 // see also ./lib/cli.js
@@ -2341,7 +2347,7 @@ function generateModuleBody(opt) {
 
         var js = JSON.stringify(obj, null, 2);
 
-        js = js.replace(new XRegExp('  "([\\p{Alphabetic}_][\\p{Alphabetic}_\\p{Number}]*)": ', 'g'), '  $1: ');
+        js = js.replace(new XRegExp(`  "(${ID_REGEX_BASE})": `, 'g'), '  $1: ');
         js = js.replace(/^( +)pre_lex: true(,)?$/gm, function (m, ls, tc) {
             return ls + 'pre_lex: ' + String(pre) + (tc || '');
         });
