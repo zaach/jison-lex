@@ -8,7 +8,7 @@ function getCommandlineOptions() {
     'use strict';
 
     var version = require('./package.json').version;
-    var opts = require('nomnom')
+    var opts = require('@gerhobbelt/nomnom')
         .script('jison-lex')
         .unknownOptionTreatment(false)              // do not accept unknown options!
         .options({
