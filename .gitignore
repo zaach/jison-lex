@@ -9,3 +9,7 @@ npm-debug.log
 
 # example output
 examples/output/
+
+/gcc-externs.js
+/lexer-runtime-full.js
+/regexp-lexer-compressed.js
