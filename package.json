@@ -7,7 +7,7 @@
   "name": "jison-lex",
   "description": "lexical analyzer generator used by jison",
   "license": "MIT",
-  "version": "0.3.4-186",
+  "version": "0.6.0-186",
   "keywords": [
     "jison",
     "parser",
@@ -36,7 +36,7 @@
     "xregexp": "github:GerHobbelt/xregexp#master"
   },
   "devDependencies": {
-    "chai": "4.1.0",
+    "chai": "4.1.1",
     "globby": "6.1.0",
     "mocha": "3.5.0"
   },
