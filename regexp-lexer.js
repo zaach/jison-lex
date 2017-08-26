@@ -1034,13 +1034,13 @@ function generateFakeXRegExpClassSrcCode() {
          * @nocollapse
          */
         function XRegExp(re, f) {
-          this.re = re;
-          this.flags = f;
-          this._getUnicodeProperty = function (k) {};
-          var fake = /./;    // WARNING: this exact 'fake' is also depended upon by the xregexp unit test!
-          __hacky_counter__++;
-          fake.__hacky_backy__ = __hacky_counter__;
-          return fake;
+            this.re = re;
+            this.flags = f;
+            this._getUnicodeProperty = function (k) {};
+            var fake = /./;    // WARNING: this exact 'fake' is also depended upon by the xregexp unit test!
+            __hacky_counter__++;
+            fake.__hacky_backy__ = __hacky_counter__;
+            return fake;
         }
     }
 
@@ -1812,7 +1812,6 @@ function getRegExpLexerPrototype() {
                 }
             }
             return rv;
-            // return JSON.stringify(yylloc);
         },
 
         /**
