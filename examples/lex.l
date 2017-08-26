@@ -18,7 +18,11 @@ BR                                      \r\n|\n|\r
 <action>[/"'][^{}/"']+                return 'ACTION_BODY';
 <action>[^{}/"']+                     return 'ACTION_BODY';
 <action>"{"                           yy.depth++; return '{'
-<action>"}"                           yy.depth == 0 ? this.begin('trail') : yy.depth--; return '}'
+<action>"}"                           if (yy.depth == 0)
+										this.begin('trail');
+									  else
+									    yy.depth--; 
+									  return '}';
 
 <conditions>{ID}                      return 'NAME';
 <conditions>">"                       this.popState(); return '>';
