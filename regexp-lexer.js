@@ -1873,7 +1873,7 @@ function getRegExpLexerPrototype() {
                 if (lines.length > 1) {
                     this.yylineno += lines.length - 1;
 
-                    this.yylloc.last_line = this.yylineno + 1,
+                    this.yylloc.last_line = this.yylineno + 1;
                     this.yylloc.last_column = lines[lines.length - 1].length;
                 } else {
                     this.yylloc.last_column += match_str_len;
