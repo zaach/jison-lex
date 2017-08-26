@@ -2407,21 +2407,26 @@ function generateFromOpts(opt) {
 function generateRegexesInitTableCode(opt) {
     var a = opt.rules;
     var print_xregexp = opt.options && opt.options.xregexp;
-    a = a.map(function generateXRegExpInitCode(re) {
+    var id_display_width = (1 + Math.log10(a.length | 1) | 0);
+    var ws_prefix = new Array(id_display_width).join(' ');
+    var b = a.map(function generateXRegExpInitCode(re, idx) {
+        var idx_str = (ws_prefix + idx).substr(-id_display_width);
+
         if (re instanceof XRegExp) {
             // When we don't need the special XRegExp sauce at run-time, we do with the original
             // JavaScript RegExp instance a.k.a. 'native regex':
             if (re.xregexp.isNative || !print_xregexp) {
-                return re;
+                return `/* ${idx_str}: */  ${re}`;
             }
             // And make sure to escape the regex to make it suitable for placement inside a *string*
             // as it is passed as a string argument to the XRegExp constructor here.
-            return 'new XRegExp("' + re.xregexp.source.replace(/[\\"]/g, '\\$&') + '", "' + re.xregexp.flags + '")';
+            var re_src = re.xregexp.source.replace(/[\\"]/g, '\\$&');
+            return `/* ${idx_str}: */  new XRegExp("${re_src}", "${re.xregexp.flags}")`;
         } else {
-            return re;
+            return `/* ${idx_str}: */  ${re}`;
         }
     });
-    return a.join(',\n');
+    return b.join(',\n');
 }
 
 function generateModuleBody(opt) {
