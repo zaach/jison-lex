@@ -1793,20 +1793,20 @@ function getRegExpLexerPrototype() {
         describeYYLLOC: function lexer_describe_yylloc(yylloc, display_range_too) {
             var l1 = yylloc.first_line;
             var l2 = yylloc.last_line;
-            var o1 = yylloc.first_column;
-            var o2 = yylloc.last_column;
+            var c1 = yylloc.first_column;
+            var c2 = yylloc.last_column;
             var dl = l2 - l1;
-            var d_o = o2 - o1;
+            var dc = c2 - c1;
             var rv;
             if (dl === 0) {
                 rv = 'line ' + l1 + ', ';
-                if (d_o === 1) {
-                    rv += 'column ' + o1;
+                if (dc <= 1) {
+                    rv += 'column ' + c1;
                 } else {
-                    rv += 'columns ' + o1 + ' .. ' + o2;
+                    rv += 'columns ' + c1 + ' .. ' + c2;
                 }
             } else {
-                rv = 'lines ' + l1 + '(column ' + o1 + ') .. ' + l2 + '(column ' + o2 + ')';
+                rv = 'lines ' + l1 + '(column ' + c1 + ') .. ' + l2 + '(column ' + c2 + ')';
             }
             if (yylloc.range && display_range_too) {
                 var r1 = yylloc.range[0];
