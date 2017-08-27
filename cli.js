@@ -1,6 +1,5 @@
 #!/usr/bin/env node
 
-var lexParser = require('lex-parser');
 var RegExpLexer = require('./regexp-lexer.js');
 
 
