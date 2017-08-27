@@ -1,6 +1,6 @@
 var assert = require("chai").assert;
 var RegExpLexer = require("../regexp-lexer");
-var XRegExp = require("xregexp");
+var XRegExp = require("@gerhobbelt/xregexp");
 
 function re2set(re) {
   var xr = new XRegExp(re);
