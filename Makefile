@@ -13,7 +13,7 @@ build:
 	node __patch_version_in_js.js
 
 test:
-	node_modules/.bin/mocha tests/
+	node_modules/.bin/mocha --timeout 18000 tests/
 
 examples:
 	node ./cli.js examples/lex.l -o examples/output/ -x
