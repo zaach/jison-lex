@@ -9,8 +9,13 @@ var json5 = require('@gerhobbelt/json5');
 var lexParser = require('@gerhobbelt/lex-parser');
 var setmgmt = require('./regexp-set-management.js');
 var code_exec = require('./safe-code-exec-and-diag.js').exec;
-var version = '0.6.0-189';                              // require('./package.json').version;
+var recast = require('@gerhobbelt/recast');
+var utils = require('@gerhobbelt/ast-util');
+var prettier = require("@gerhobbelt/prettier");
 var assert = require('assert');
+
+var version = '0.6.0-189';                              // require('./package.json').version;
+
 
 
 
@@ -2165,14 +2170,13 @@ RegExpLexer.prototype = getRegExpLexerPrototype();
 // The lexer code stripper, driven by optimization analysis settings and
 // lexer options, which cannot be changed at run-time.
 function stripUnusedLexerCode(src, opt) {
-    var recast = require('@gerhobbelt/recast');
+    assert(recast);
     var types = recast.types;
     assert(types);
     var namedTypes = types.namedTypes;
     assert(namedTypes);
     var b = types.builders;
     assert(b);
-    var utils = require('@gerhobbelt/ast-util');
     assert(utils);
 
     //   uses yyleng: ..................... ${opt.lexerActionsUseYYLENG}
@@ -2189,6 +2193,7 @@ function stripUnusedLexerCode(src, opt) {
     //        ............................. ${opt.lexerActionsUseDisplayAPIs}
     //   uses describeYYLLOC() API: ....... ${opt.lexerActionsUseDescribeYYLOC}
 
+if (0) {
     var ast = recast.parse(src);
     var new_src = recast.prettyPrint(ast, { 
         tabWidth: 2,
@@ -2199,6 +2204,9 @@ function stripUnusedLexerCode(src, opt) {
         // when printing generically.
         reuseWhitespace: false
     }).code;
+} else {
+    var new_src = prettier.format(src);
+}
 
 if (0) {
     this.actionsUseYYLENG = analyzeFeatureUsage(this.performAction, /\byyleng\b/g, 1);
@@ -2220,7 +2228,6 @@ if (0) {
 
     if (devDebug || this.DEBUG) {
         Jison.print('Optimization analysis: ', {
-            actionsAreAllDefault: this.actionsAreAllDefault,
             actionsUseYYLENG: this.actionsUseYYLENG,
             actionsUseYYLINENO: this.actionsUseYYLINENO,
             actionsUseYYTEXT: this.actionsUseYYTEXT,
@@ -2327,7 +2334,6 @@ function processGrammar(dict, tokens, build_options) {
         //
         // (this stuff comes straight from the jison Optimization Analysis.)
         //
-        parseActionsAreAllDefault: build_options.parseActionsAreAllDefault,
         parseActionsUseYYLENG: build_options.parseActionsUseYYLENG,
         parseActionsUseYYLINENO: build_options.parseActionsUseYYLINENO,
         parseActionsUseYYTEXT: build_options.parseActionsUseYYTEXT,
@@ -2480,7 +2486,6 @@ function generateModuleBody(opt) {
           showSource: 1,
           exportAST: 1,
           prettyCfg: 1,
-          parseActionsAreAllDefault: 1,
           parseActionsUseYYLENG: 1,
           parseActionsUseYYLINENO: 1,
           parseActionsUseYYTEXT: 1,
