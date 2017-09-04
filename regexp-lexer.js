@@ -10,8 +10,8 @@ var lexParser = require('@gerhobbelt/lex-parser');
 var setmgmt = require('./regexp-set-management.js');
 var code_exec = require('./safe-code-exec-and-diag.js').exec;
 var recast = require('@gerhobbelt/recast');
-var utils = require('@gerhobbelt/ast-util');
-var prettier = require("@gerhobbelt/prettier");
+var ast_utils = require('@gerhobbelt/ast-util');
+var prettier = require("@gerhobbelt/prettier-miscellaneous");
 var assert = require('assert');
 
 var version = '0.6.0-189';                              // require('./package.json').version;
@@ -2177,7 +2177,7 @@ function stripUnusedLexerCode(src, opt) {
     assert(namedTypes);
     var b = types.builders;
     assert(b);
-    assert(utils);
+    assert(ast_utils);
 
     //   uses yyleng: ..................... ${opt.lexerActionsUseYYLENG}
     //   uses yylineno: ................... ${opt.lexerActionsUseYYLINENO}
@@ -2245,7 +2245,8 @@ if (0) {
             actionsUseYYSSTACK: this.actionsUseYYSSTACK,
             actionsUseYYSTACKPOINTER: this.actionsUseYYSTACKPOINTER,
             hasErrorRecovery: this.hasErrorRecovery,
-            noDefaultAction: this.options.noDefaultAction,
+            hasErrorReporting: this.hasErrorReporting,
+            defaultActionMode: this.options.defaultActionMode,
             noTryCatch: this.options.noTryCatch,
         });
     }
@@ -2352,6 +2353,7 @@ function processGrammar(dict, tokens, build_options) {
         parseActionsUseYYSTACKPOINTER: build_options.parseActionsUseYYSTACKPOINTER,
         parseActionsUseYYRULELENGTH: build_options.parseActionsUseYYRULELENGTH,
         parserHasErrorRecovery: build_options.parserHasErrorRecovery,
+        parserHasErrorReporting: build_options.parserHasErrorReporting,
 
         lexerActionsUseYYLENG: '???',
         lexerActionsUseYYLINENO: '???',
@@ -2504,6 +2506,7 @@ function generateModuleBody(opt) {
           parseActionsUseYYSTACKPOINTER: 1,
           parseActionsUseYYRULELENGTH: 1,
           parserHasErrorRecovery: 1,
+          parserHasErrorReporting: 1,
           lexerActionsUseYYLENG: 1,
           lexerActionsUseYYLINENO: 1,
           lexerActionsUseYYTEXT: 1,
