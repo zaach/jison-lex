@@ -4,15 +4,15 @@
 
 'use strict';
 
-var XRegExp = require('@gerhobbelt/xregexp');
-var json5 = require('@gerhobbelt/json5');
-var lexParser = require('@gerhobbelt/lex-parser');
-var setmgmt = require('./regexp-set-management.js');
-var code_exec = require('./safe-code-exec-and-diag.js').exec;
-var recast = require('@gerhobbelt/recast');
-var ast_utils = require('@gerhobbelt/ast-util');
-var prettier = require("@gerhobbelt/prettier-miscellaneous");
-var assert = require('assert');
+var XRegExp     = require('@gerhobbelt/xregexp');
+var json5       = require('@gerhobbelt/json5');
+var lexParser   = require('@gerhobbelt/lex-parser');
+var setmgmt     = require('./regexp-set-management.js');
+var code_exec   = require('./safe-code-exec-and-diag.js').exec;
+var recast      = require('@gerhobbelt/recast');
+var astUtils    = require('@gerhobbelt/ast-util');
+var prettier    = require("@gerhobbelt/prettier-miscellaneous");
+var assert      = require('assert');
 
 var version = '0.6.0-189';                              // require('./package.json').version;
 
@@ -161,7 +161,7 @@ function mkStdOptions(/*...args*/) {
 // compiler/generator.
 //
 // Otherwise return the *parsed* lexer spec as it has
-// been processed through LEXParser.
+// been processed through LexParser.
 function autodetectAndConvertToJSONformat(lexerSpec, options) {
   var chk_l = null;
   var ex1, err;
@@ -2066,13 +2066,15 @@ function getRegExpLexerPrototype() {
                 r = this.next();
             }
 
-            console.log('@@@@@@@@@ lex: ', {
-                token: r,
-                sym: this.yy.parser && typeof this.yy.parser.describeSymbol === 'function' && this.yy.parser.describeSymbol(r),
-                describeTypeFunc: this.yy.parser && typeof this.yy.parser.describeSymbol, 
-                condition: this.conditionStack,
-                text: this.yytext,
-            }, '\n' + (this.showPosition ? this.showPosition() : '???'));
+            if (0) {
+                console.log('@@@@@@@@@ lex: ', {
+                    token: r,
+                    sym: this.yy.parser && typeof this.yy.parser.describeSymbol === 'function' && this.yy.parser.describeSymbol(r),
+                    describeTypeFunc: this.yy.parser && typeof this.yy.parser.describeSymbol, 
+                    condition: this.conditionStack,
+                    text: this.yytext,
+                }, '\n' + (this.showPosition ? this.showPosition() : '???'));
+            }
 
             if (typeof this.options.post_lex === 'function') {
                 // (also account for a userdef function which does not return any value: keep the token as is)
@@ -2177,7 +2179,7 @@ function stripUnusedLexerCode(src, opt) {
     assert(namedTypes);
     var b = types.builders;
     assert(b);
-    assert(ast_utils);
+    assert(astUtils);
 
     //   uses yyleng: ..................... ${opt.lexerActionsUseYYLENG}
     //   uses yylineno: ................... ${opt.lexerActionsUseYYLINENO}
@@ -2227,7 +2229,7 @@ if (0) {
 
 
     if (devDebug || this.DEBUG) {
-        Jison.print('Optimization analysis: ', {
+        console.log('Optimization analysis: ', {
             actionsUseYYLENG: this.actionsUseYYLENG,
             actionsUseYYLINENO: this.actionsUseYYLINENO,
             actionsUseYYTEXT: this.actionsUseYYTEXT,
