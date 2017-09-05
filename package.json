@@ -33,13 +33,13 @@
     "@gerhobbelt/ast-util": "0.6.1-4",
     "@gerhobbelt/json5": "0.5.1-19",
     "@gerhobbelt/lex-parser": "0.6.0-188",
-    "@gerhobbelt/nomnom": "1.8.4-16",
+    "@gerhobbelt/nomnom": "1.8.4-17",
     "@gerhobbelt/recast": "0.12.7-7",
     "@gerhobbelt/prettier-miscellaneous": "1.6.2-5",
     "@gerhobbelt/xregexp": "3.2.0-21"
   },
   "devDependencies": {
-    "chai": "4.1.1",
+    "chai": "4.1.2",
     "globby": "6.1.0",
     "mocha": "3.5.0"
   },
