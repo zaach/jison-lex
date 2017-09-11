@@ -15,9 +15,13 @@ build:
 test:
 	node_modules/.bin/mocha --timeout 18000 tests/
 
-examples:
+examples: example-lex example-include
+
+example-lex:
 	node ./cli.js examples/lex.l -o examples/output/ -x
 
+example-include:
+	node ./cli.js examples/with-includes.test.lex -o examples/output/ -x
 
 # increment the XXX <prelease> number in the package.json file: version <major>.<minor>.<patch>-<prelease>
 bump:
@@ -46,4 +50,4 @@ superclean: clean
 
 
 
-.PHONY: all prep npm-install build test examples clean superclean bump git-tag publish
+.PHONY: all prep npm-install build test examples clean superclean bump git-tag publish example-lex example-include
