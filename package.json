@@ -7,7 +7,7 @@
   "name": "@gerhobbelt/jison-lex",
   "description": "lexical analyzer generator used by jison",
   "license": "MIT",
-  "version": "0.6.0-193",
+  "version": "0.6.0-194",
   "keywords": [
     "jison",
     "parser",
