@@ -6,7 +6,7 @@
 
 var XRegExp     = require('@gerhobbelt/xregexp');
 var json5       = require('@gerhobbelt/json5');
-var lexParser   = require('@gerhobbelt/lex-parser');
+var lexParser   = require('../lex-parser');
 var setmgmt     = require('./regexp-set-management.js');
 var helpers     = require('../../modules/helpers-lib');
 var rmCommonWS = helpers.rmCommonWS;
