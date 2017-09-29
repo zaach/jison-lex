@@ -34,14 +34,19 @@
     "@gerhobbelt/json5": "0.5.1-19",
     "@gerhobbelt/lex-parser": "0.6.0-193",
     "@gerhobbelt/nomnom": "1.8.4-21",
-    "@gerhobbelt/recast": "0.12.7-7",
     "@gerhobbelt/prettier-miscellaneous": "1.6.2-5",
-    "@gerhobbelt/xregexp": "3.2.0-21"
+    "@gerhobbelt/recast": "0.12.7-7",
+    "@gerhobbelt/xregexp": "3.2.0-21",
+    "babel-core": "6.26.0",
+    "babel-preset-env": "1.6.0",
+    "babel-preset-modern-browsers": "9.0.2"
   },
   "devDependencies": {
+    "babel-cli": "6.26.0",
     "chai": "4.1.2",
     "globby": "6.1.0",
-    "mocha": "3.5.3"
+    "mocha": "3.5.3",
+    "rollup": "0.50.0"
   },
   "scripts": {
     "test": "make test",
