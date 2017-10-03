@@ -256,6 +256,11 @@ ANY_LITERAL_CHAR                        [^\s\r\n<>\[\](){}.*+?:!=|%\/\\^$,\'\";]
 
 %%
 
+
+var helpers    = require('../../modules/helpers-lib');
+var dquote = helpers.dquote;
+
+
 function indent(s, i) {
     var a = s.split('\n');
     var pf = (new Array(i + 1)).join(' ');
@@ -273,22 +278,6 @@ function unescQuote(str) {
     return str;
 }
 
-// properly quote and escape the given input string
-function dquote(s) {
-    var sq = (s.indexOf('\'') >= 0);
-    var dq = (s.indexOf('"') >= 0);
-    if (sq && dq) {
-        s = s.replace(/"/g, '\\"');
-        dq = false;
-    }
-    if (dq) {
-        s = '\'' + s + '\'';
-    }
-    else {
-        s = '"' + s + '"';
-    }
-    return s;
-}
 
 lexer.warn = function l_warn() {
     if (this.yy && this.yy.parser && typeof this.yy.parser.warn === 'function') {
