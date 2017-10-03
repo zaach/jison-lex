@@ -33,9 +33,9 @@
     "@gerhobbelt/ast-util": "0.6.1-4",
     "@gerhobbelt/json5": "0.5.1-19",
     "@gerhobbelt/lex-parser": "0.6.0-193",
-    "@gerhobbelt/nomnom": "1.8.4-21",
+    "@gerhobbelt/nomnom": "1.8.4-24",
     "@gerhobbelt/prettier-miscellaneous": "1.6.2-5",
-    "@gerhobbelt/recast": "0.12.7-7",
+    "@gerhobbelt/recast": "0.12.7-11",
     "@gerhobbelt/xregexp": "3.2.0-21",
     "babel-core": "6.26.0",
     "babel-preset-env": "1.6.0",
@@ -45,7 +45,7 @@
     "babel-cli": "6.26.0",
     "chai": "4.1.2",
     "globby": "6.1.0",
-    "mocha": "3.5.3",
+    "mocha": "4.0.0",
     "rollup": "0.50.0"
   },
   "scripts": {
