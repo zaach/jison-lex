@@ -1046,7 +1046,7 @@ var jisonLexerErrorDefinition = generateErrorClass();
 
 
 function generateFakeXRegExpClassSrcCode() {
-    function fake() {
+    return rmCommonWS`
         var __hacky_counter__ = 0;
 
         /**
@@ -1062,9 +1062,7 @@ function generateFakeXRegExpClassSrcCode() {
             fake.__hacky_backy__ = __hacky_counter__;
             return fake;
         }
-    }
-
-    return printFunctionSourceCodeContainer(fake);
+    `;
 }
 
 
