@@ -26,5 +26,5 @@ globby(['dist/cli*.js']).then(paths => {
 	    }
     });
 
-    console.log('\nUpdated', count, 'files\' version info to version', version);
+    console.log('\nUpdated', count, 'files\' CLI/node hash-bang');
 });
