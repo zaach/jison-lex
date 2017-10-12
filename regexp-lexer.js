@@ -2,20 +2,18 @@
 // Zachary Carter <zach@carter.name>
 // MIT Licensed
 
-'use strict';
-
-var XRegExp     = require('@gerhobbelt/xregexp');
-var json5       = require('@gerhobbelt/json5');
-var lexParser   = require('../lex-parser');
-var setmgmt     = require('./regexp-set-management.js');
-var helpers     = require('jison-helpers-lib');
+import XRegExp from '@gerhobbelt/xregexp';
+import json5 from '@gerhobbelt/json5';
+import lexParser from '@gerhobbelt/lex-parser';
+import setmgmt from './regexp-set-management.js';
+import helpers from 'jison-helpers-lib';
 var rmCommonWS  = helpers.rmCommonWS;
 var camelCase   = helpers.camelCase;
 var code_exec   = helpers.exec;
-var recast      = require('@gerhobbelt/recast');
-var astUtils    = require('@gerhobbelt/ast-util');
-var prettier    = require("@gerhobbelt/prettier-miscellaneous");
-var assert      = require('assert');
+import recast from '@gerhobbelt/recast';
+import astUtils from '@gerhobbelt/ast-util';
+import prettier from '@gerhobbelt/prettier-miscellaneous';
+import assert from 'assert';
 
 var version = '0.6.0-194';                              // require('./package.json').version;
 
@@ -3154,5 +3152,6 @@ RegExpLexer.printFunctionSourceCode = printFunctionSourceCode;
 RegExpLexer.printFunctionSourceCodeContainer = printFunctionSourceCodeContainer;
 RegExpLexer.autodetectAndConvertToJSONformat = autodetectAndConvertToJSONformat;
 
-module.exports = RegExpLexer;
+
+export default RegExpLexer;
 
