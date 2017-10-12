@@ -1,13 +1,17 @@
 #!/usr/bin/env node
 
+var fs = require('fs');
+var path = require('path');
+var version = require('./package.json').version;
+var nomnom = require('@gerhobbelt/nomnom')
+
 var RegExpLexer = require('./regexp-lexer.js');
 
 
 function getCommandlineOptions() {
     'use strict';
 
-    var version = require('./package.json').version;
-    var opts = require('@gerhobbelt/nomnom')
+    var opts = nomnom
         .script('jison-lex')
         .unknownOptionTreatment(false)              // do not accept unknown options!
         .options({
@@ -98,9 +102,6 @@ cli.main = function cliMain(opts) {
     'use strict';
 
     opts = RegExpLexer.mkStdOptions(opts);
-
-    var fs = require('fs');
-    var path = require('path');
 
     function isDirectory(fp) {
         try {

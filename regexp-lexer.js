@@ -8,8 +8,8 @@ var XRegExp     = require('@gerhobbelt/xregexp');
 var json5       = require('@gerhobbelt/json5');
 var lexParser   = require('../lex-parser');
 var setmgmt     = require('./regexp-set-management.js');
-var helpers     = require('../../modules/helpers-lib');
-var rmCommonWS = helpers.rmCommonWS;
+var helpers     = require('jison-helpers-lib');
+var rmCommonWS  = helpers.rmCommonWS;
 var camelCase   = helpers.camelCase;
 var code_exec   = helpers.exec;
 var recast      = require('@gerhobbelt/recast');
@@ -3097,7 +3097,15 @@ function generateESModule(opt) {
         'return lexer;',
         '})();',
         '',
-        'export {lexer};'
+        'function yylex() {',
+        '    return lexer.lex.apply(lexer, arguments);',
+        '}',
+        rmCommonWS`
+            export {
+                lexer,
+                yylex as lex
+            };
+        `
     ];
 
     var src = out.join('\n') + '\n';
