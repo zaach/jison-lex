@@ -6,7 +6,7 @@ const globby = require('globby');
 const fs = require('fs');
 
  
-globby(['*lexer*.js']).then(paths => {
+globby(['*lexer*.js', '*cli*.js']).then(paths => {
 	var count = 0;
 
     //console.log(paths);

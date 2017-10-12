@@ -1,11 +1,11 @@
-#!/usr/bin/env node
 
-var fs = require('fs');
-var path = require('path');
-var version = require('./package.json').version;
-var nomnom = require('@gerhobbelt/nomnom')
+import fs from 'fs';
+import path from 'path';
+import nomnom from '@gerhobbelt/nomnom';
 
-var RegExpLexer = require('./regexp-lexer.js');
+import RegExpLexer from './regexp-lexer.js';
+
+var version = '0.6.0-194';                              // require('./package.json').version;
 
 
 function getCommandlineOptions() {
