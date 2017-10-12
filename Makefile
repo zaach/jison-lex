@@ -1,5 +1,12 @@
 
-LEX = node ./cli.js
+LEX = node ./dist/cli-cjs-es5.js
+
+ROLLUP = node_modules/.bin/rollup
+BABEL = node_modules/.bin/babel
+MOCHA = node_modules/.bin/mocha
+
+
+
 
 all: build test examples
 
@@ -13,9 +20,17 @@ npm-update:
 
 build:
 	node __patch_version_in_js.js
+	-mkdir -p dist
+	$(ROLLUP) -c
+	$(BABEL) dist/regexp-lexer-cjs.js -o dist/regexp-lexer-cjs-es5.js
+	$(BABEL) dist/regexp-lexer-umd.js -o dist/regexp-lexer-umd-es5.js
+	$(ROLLUP) -c rollup.config-cli.js
+	$(BABEL) dist/cli-cjs.js -o dist/cli-cjs-es5.js
+	$(BABEL) dist/cli-umd.js -o dist/cli-umd-es5.js
+	node __patch_nodebang_in_js.js
 
 test:
-	node_modules/.bin/mocha --timeout 18000 --check-leaks --globals assert tests/
+	$(MOCHA) --timeout 18000 --check-leaks --globals assert tests/
 
 examples:                                           \
 		example-include                             \
@@ -140,6 +155,7 @@ publish:
 
 
 clean:
+	-rm -rf dist/
 	-rm -rf node_modules/
 	-rm -f package-lock.json
 	-rm -rf examples/output/

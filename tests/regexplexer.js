@@ -1,5 +1,5 @@
 var assert = require("chai").assert;
-var RegExpLexer = require("../regexp-lexer");
+var RegExpLexer = require("../dist/regexp-lexer-cjs-es5");
 var XRegExp = require("@gerhobbelt/xregexp");
 
 function re2set(re) {

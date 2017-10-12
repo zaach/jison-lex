@@ -24,8 +24,9 @@
     "email": "jison@librelist.com",
     "url": "http://github.com/zaach/jison-lex/issues"
   },
-  "main": "./regexp-lexer.js",
-  "bin": "./cli.js",
+  "main": "dist/regexp-lexer-cjs-es5.js",
+  "module": "regexp-lexer.js",
+  "bin": "dist/cli.js",
   "engines": {
     "node": ">=4.0"
   },
