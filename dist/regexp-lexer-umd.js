@@ -1013,7 +1013,7 @@ var setmgmt = {
 var rmCommonWS  = helpers.rmCommonWS;
 var camelCase   = helpers.camelCase;
 var code_exec   = helpers.exec;
-var version = '0.6.0-194';                              // require('./package.json').version;
+var version = '0.6.0-196';                              // require('./package.json').version;
 
 
 

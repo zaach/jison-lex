@@ -1019,7 +1019,7 @@ var setmgmt = {
 var rmCommonWS  = helpers.rmCommonWS;
 var camelCase   = helpers.camelCase;
 var code_exec   = helpers.exec;
-var version$1 = '0.6.0-194';                              // require('./package.json').version;
+var version$1 = '0.6.0-196';                              // require('./package.json').version;
 
 
 
@@ -4088,7 +4088,7 @@ RegExpLexer.printFunctionSourceCode = printFunctionSourceCode;
 RegExpLexer.printFunctionSourceCodeContainer = printFunctionSourceCodeContainer;
 RegExpLexer.autodetectAndConvertToJSONformat = autodetectAndConvertToJSONformat;
 
-var version = '0.6.0-194';                              // require('./package.json').version;
+var version = '0.6.0-196';                              // require('./package.json').version;
 
 
 function getCommandlineOptions() {

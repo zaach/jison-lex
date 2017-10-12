@@ -1014,7 +1014,7 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
     var rmCommonWS = helpers.rmCommonWS;
     var camelCase = helpers.camelCase;
     var code_exec = helpers.exec;
-    var version$1 = '0.6.0-194'; // require('./package.json').version;
+    var version$1 = '0.6.0-196'; // require('./package.json').version;
 
 
     var XREGEXP_UNICODE_ESCAPE_RE = setmgmt.XREGEXP_UNICODE_ESCAPE_RE; // Matches the XRegExp Unicode escape braced part, e.g. `{Number}`
@@ -3662,7 +3662,7 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
     RegExpLexer.printFunctionSourceCodeContainer = printFunctionSourceCodeContainer;
     RegExpLexer.autodetectAndConvertToJSONformat = autodetectAndConvertToJSONformat;
 
-    var version = '0.6.0-194'; // require('./package.json').version;
+    var version = '0.6.0-196'; // require('./package.json').version;
 
 
     function getCommandlineOptions() {
