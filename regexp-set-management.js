@@ -15,8 +15,8 @@
 
 'use strict';
 
-var XRegExp = require('@gerhobbelt/xregexp');
-var assert = require('assert');
+import XRegExp from '@gerhobbelt/xregexp';
+import assert from 'assert';
 
 
 
@@ -978,22 +978,22 @@ function produceOptimizedRegex4Set(bitarr) {
 
 
 
-module.exports = {
-	XREGEXP_UNICODE_ESCAPE_RE: XREGEXP_UNICODE_ESCAPE_RE,
-	CHR_RE: CHR_RE,
-	SET_PART_RE: SET_PART_RE,
-	NOTHING_SPECIAL_RE: NOTHING_SPECIAL_RE,
-	SET_IS_SINGLE_PCODE_RE: SET_IS_SINGLE_PCODE_RE,
+export default {
+	XREGEXP_UNICODE_ESCAPE_RE,
+	CHR_RE,
+	SET_PART_RE,
+	NOTHING_SPECIAL_RE,
+	SET_IS_SINGLE_PCODE_RE,
 
-	UNICODE_BASE_PLANE_MAX_CP: UNICODE_BASE_PLANE_MAX_CP,
+	UNICODE_BASE_PLANE_MAX_CP,
 
-	WHITESPACE_SETSTR: WHITESPACE_SETSTR,
-	DIGIT_SETSTR: DIGIT_SETSTR,
-	WORDCHAR_SETSTR: WORDCHAR_SETSTR,
+	WHITESPACE_SETSTR,
+	DIGIT_SETSTR,
+	WORDCHAR_SETSTR,
 
-	set2bitarray: set2bitarray,
-	bitarray2set: bitarray2set,
-	produceOptimizedRegex4Set: produceOptimizedRegex4Set,
-	reduceRegexToSetBitArray: reduceRegexToSetBitArray,
+	set2bitarray,
+	bitarray2set,
+	produceOptimizedRegex4Set,
+	reduceRegexToSetBitArray,
 };
 
