@@ -1778,6 +1778,7 @@ function getRegExpLexerPrototype() {
          * Negative limit values equal *unlimited*.
          *
          * > ### NOTE ###
+         * >
          * > *"upcoming input"* is defined as the whole of the both
          * > the *currently lexed* input, together with any remaining input
          * > following that. *"currently lexed"* input is the input 
