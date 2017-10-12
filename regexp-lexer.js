@@ -1172,43 +1172,55 @@ function RegExpLexer(dict, input, tokens, build_options) {
         // When we get an exception here, it means some part of the user-specified lexer is botched.
         //
         // Now we go and try to narrow down the problem area/category:
+        assert(opts.options);
+        assert(opts.options.xregexp !== undefined);
+        var orig_xregexp_opt = !!opts.options.xregexp;
         if (!test_me(function () {
-            opts.conditions = [];
+            assert(opts.options.xregexp !== undefined);
+            opts.options.xregexp = false;
             opts.showSource = false;
-        }, (dict.rules.length > 0 ?
-            'One or more of your lexer state names are possibly botched?' :
-            'Your custom lexer is somehow botched.'), ex, null)) {
+        }, 'When you have specified %option xregexp, you must also properly IMPORT the XRegExp library in the generated lexer.', ex, null)) {
             if (!test_me(function () {
-                // opts.conditions = [];
-                opts.rules = [];
-                opts.showSource = false;
-                opts.__in_rules_failure_analysis_mode__ = true;
-            }, 'One or more of your lexer rules are possibly botched?', ex, null)) {
-                // kill each rule action block, one at a time and test again after each 'edit':
-                var rv = false;
-                for (var i = 0, len = dict.rules.length; i < len; i++) {
-                    dict.rules[i][1] = '{ /* nada */ }';
-                    rv = test_me(function () {
-                        // opts.conditions = [];
-                        // opts.rules = [];
-                        // opts.__in_rules_failure_analysis_mode__ = true;
-                    }, 'Your lexer rule "' + dict.rules[i][0] + '" action code block is botched?', ex, null);
-                    if (rv) {
-                        break;
-                    }
-                }
-                if (!rv) {
-                    test_me(function () {
-                        opts.conditions = [];
-                        opts.rules = [];
-                        opts.performAction = 'null';
-                        // opts.options = {};
-                        // opts.caseHelperInclude = '{}';
-                        opts.showSource = false;
-                        opts.__in_rules_failure_analysis_mode__ = true;
+                // restore xregexp option setting: the trouble wasn't caused by the xregexp flag i.c.w. incorrect XRegExp library importing!
+                opts.options.xregexp = orig_xregexp_opt;
 
-                        dump = false;
-                    }, 'One or more of your lexer rule action code block(s) are possibly botched?', ex, null);
+                opts.conditions = [];
+                opts.showSource = false;
+            }, (dict.rules.length > 0 ?
+                'One or more of your lexer state names are possibly botched?' :
+                'Your custom lexer is somehow botched.'), ex, null)) {
+                if (!test_me(function () {
+                    // opts.conditions = [];
+                    opts.rules = [];
+                    opts.showSource = false;
+                    opts.__in_rules_failure_analysis_mode__ = true;
+                }, 'One or more of your lexer rules are possibly botched?', ex, null)) {
+                    // kill each rule action block, one at a time and test again after each 'edit':
+                    var rv = false;
+                    for (var i = 0, len = dict.rules.length; i < len; i++) {
+                        dict.rules[i][1] = '{ /* nada */ }';
+                        rv = test_me(function () {
+                            // opts.conditions = [];
+                            // opts.rules = [];
+                            // opts.__in_rules_failure_analysis_mode__ = true;
+                        }, 'Your lexer rule "' + dict.rules[i][0] + '" action code block is botched?', ex, null);
+                        if (rv) {
+                            break;
+                        }
+                    }
+                    if (!rv) {
+                        test_me(function () {
+                            opts.conditions = [];
+                            opts.rules = [];
+                            opts.performAction = 'null';
+                            // opts.options = {};
+                            // opts.caseHelperInclude = '{}';
+                            opts.showSource = false;
+                            opts.__in_rules_failure_analysis_mode__ = true;
+
+                            dump = false;
+                        }, 'One or more of your lexer rule action code block(s) are possibly botched?', ex, null);
+                    }
                 }
             }
         }
