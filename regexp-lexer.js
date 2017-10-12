@@ -1284,7 +1284,7 @@ function getRegExpLexerPrototype() {
 
         // yy: ...,                                 /// <-- injected by setInput()
 
-        __currentRuleSet__: null,                   /// <-- internal rule set cache for the current lexer state
+        __currentRuleSet__: null,                   /// INTERNAL USE ONLY: internal rule set cache for the current lexer state
 
         __error_infos: [],                          /// INTERNAL USE ONLY: the set of lexErrorInfo objects created since the last cleanup
 
@@ -1442,6 +1442,7 @@ function getRegExpLexerPrototype() {
             this.yytext = '';
             this.yyleng = 0;
             this.match = '';
+            // - DO NOT reset `this.matched`
             this.matches = false;
             this._more = false;
             this._backtrack = false;
@@ -1528,46 +1529,59 @@ function getRegExpLexerPrototype() {
         },
 
         /**
-         * push a new input into the lexer and activate it:
-         * the old input position is stored and will be resumed
-         * once this new input has been consumed.
+         * edit the remaining input via user-specified callback.
+         * This can be used to forward-adjust the input-to-parse, 
+         * e.g. inserting macro expansions and alike in the
+         * input which has yet to be lexed.
+         * The behaviour of this API contrasts the `unput()` et al
+         * APIs as those act on the *consumed* input, while this
+         * one allows one to manipulate the future, without impacting
+         * the current `yyloc` cursor location or any history. 
          * 
          * Use this API to help implement C-preprocessor-like
-         * `#include` statements.
+         * `#include` statements, etc.
          * 
-         * Available options:
+         * The provided callback must be synchronous and is
+         * expected to return the edited input (string).
+         *
+         * The `cpsArg` argument value is passed to the callback
+         * as-is.
+         *
+         * `callback` interface: 
+         * `function callback(input, cpsArg)`
          * 
-         * - `emit_EOF_at_end` : {int} the `EOF`-like token to emit
-         *                       when the new input is consumed: use
-         *                       this to mark the end of the new input
-         *                       in the parser grammar. zero/falsey
-         *                       token value means no end marker token
-         *                       will be emitted before the lexer
-         *                       resumes reading from the previous input.
+         * - `input` will carry the remaining-input-to-lex string
+         *   from the lexer.
+         * - `cpsArg` is `cpsArg` passed into this API.
+         * 
+         * The `this` reference for the callback will be set to
+         * reference this lexer instance so that userland code
+         * in the callback can easily and quickly access any lexer
+         * API. 
+         *
+         * When the callback returns a non-string-type falsey value,
+         * we assume the callback did not edit the input and we
+         * will using the input as-is.
+         *
+         * When the callback returns a non-string-type value, it
+         * is converted to a string for lexing via the `"" + retval`
+         * operation. (See also why: http://2ality.com/2012/03/converting-to-string.html 
+         * -- that way any returned object's `toValue()` and `toString()`
+         * methods will be invoked in a proper/desirable order.)
          * 
          * @public
          * @this {RegExpLexer}
          */
-        pushInput: function lexer_pushInput(input, label, options) {
-            options = options || {};
-
-            this._input = input || '';
-            this.clear();
-            // this._signaled_error_token = false;
-            this.done = false;
-            this.yylineno = 0;
-            this.matched = '';
-            // this.conditionStack = ['INITIAL'];
-            // this.__currentRuleSet__ = null;
-            this.yylloc = {
-                first_line: 1,
-                first_column: 0,
-                last_line: 1,
-                last_column: 0,
-
-                range: [0, 0]
-            };
-            this.offset = 0;
+        editRemainingInput: function lexer_editRemainingInput(callback, cpsArg) {
+            var rv = callback.call(this, this._input, cpsArg);
+            if (typeof rv !== 'string') {
+                if (rv) {
+                    this._input = '' + rv; 
+                }
+                // else: keep `this._input` as is. 
+            } else {
+                this._input = rv; 
+            }
             return this;
         },
 
@@ -1762,6 +1776,15 @@ function getRegExpLexerPrototype() {
          * Limit the returned string to the `maxLines` number of lines of input (default: 1).
          * 
          * Negative limit values equal *unlimited*.
+         *
+         * > ### NOTE ###
+         * > *"upcoming input"* is defined as the whole of the both
+         * > the *currently lexed* input, together with any remaining input
+         * > following that. *"currently lexed"* input is the input 
+         * > already recognized by the lexer but not yet returned with
+         * > the lexer token. This happens when you are invoking this API
+         * > from inside any lexer rule action code block. 
+         * >
          * 
          * @public
          * @this {RegExpLexer}
@@ -2028,6 +2051,7 @@ function getRegExpLexerPrototype() {
             // }
             this.yytext += match_str;
             this.match += match_str;
+            this.matched += match_str;
             this.matches = match;
             this.yyleng = this.yytext.length;
             this.yylloc.range[1] += match_str_len;
@@ -2039,7 +2063,6 @@ function getRegExpLexerPrototype() {
             this._more = false;
             this._backtrack = false;
             this._input = this._input.slice(match_str_len);
-            this.matched += match_str;
 
             // calling this method:
             //
@@ -2120,7 +2143,6 @@ function getRegExpLexerPrototype() {
             }
 
             var rule_ids = spec.rules;
-            //var dispatch = spec.__dispatch_lut;
             var regexes = spec.__rule_regexes;
             var len = spec.__rule_count;
 
@@ -2196,18 +2218,9 @@ function getRegExpLexerPrototype() {
             if (typeof this.options.pre_lex === 'function') {
                 r = this.options.pre_lex.call(this);
             }
+
             while (!r) {
                 r = this.next();
-            }
-
-            if (0) {
-                console.log('@@@@@@@@@ lex: ', {
-                    token: r,
-                    sym: this.yy.parser && typeof this.yy.parser.describeSymbol === 'function' && this.yy.parser.describeSymbol(r),
-                    describeTypeFunc: this.yy.parser && typeof this.yy.parser.describeSymbol, 
-                    condition: this.conditionStack,
-                    text: this.yytext,
-                }, '\n' + (this.showPosition ? this.showPosition() : '???'));
             }
 
             if (typeof this.options.post_lex === 'function') {
