@@ -378,8 +378,6 @@ function prepareRules(dict, actions, caseHelper, tokens, startConditions, opts) 
 // elsewhere, which requires two different treatments to expand these macros.
 function reduceRegex(s, name, opts, expandAllMacrosInSet_cb, expandAllMacrosElsewhere_cb) {
     var orig = s;
-    var regex_simple_size = 0;
-    var regex_previous_alts_simple_size = 0;
 
     function errinfo() {
         if (name) {
@@ -1419,8 +1417,6 @@ function getRegExpLexerPrototype() {
          * @this {RegExpLexer}
          */
         cleanupAfterLex: function lexer_cleanupAfterLex(do_not_nuke_errorinfos) {
-            var rv;
-
             // prevent lingering circular references from causing memory leaks:
             this.setInput('', {});
 
@@ -2726,8 +2722,6 @@ function generateModuleBody(opt) {
 
     var out;
     if (opt.rules.length > 0 || opt.__in_rules_failure_analysis_mode__) {
-        var descr;
-
         // we don't mind that the `test_me()` code above will have this `lexer` variable re-defined:
         // JavaScript is fine with that.
         var code = [rmCommonWS`
