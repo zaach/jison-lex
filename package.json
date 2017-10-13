@@ -7,7 +7,7 @@
   "name": "@gerhobbelt/jison-lex",
   "description": "lexical analyzer generator used by jison",
   "license": "MIT",
-  "version": "0.6.0-196",
+  "version": "0.6.1-200",
   "keywords": [
     "jison",
     "parser",
@@ -48,6 +48,7 @@
     "chai": "4.1.2",
     "globby": "6.1.0",
     "mocha": "4.0.1",
+    "rollup-plugin-node-resolve": "3.0.0",
     "rollup": "0.50.0"
   },
   "scripts": {
