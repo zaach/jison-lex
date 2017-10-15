@@ -10,9 +10,8 @@ import helpers from 'jison-helpers-lib';
 var rmCommonWS  = helpers.rmCommonWS;
 var camelCase   = helpers.camelCase;
 var code_exec   = helpers.exec;
-import recast from '@gerhobbelt/recast';
-import astUtils from '@gerhobbelt/ast-util';
-import prettier from '@gerhobbelt/prettier-miscellaneous';
+// import recast from '@gerhobbelt/recast';
+// import astUtils from '@gerhobbelt/ast-util';
 import assert from 'assert';
 
 var version = '0.6.1-200';                              // require('./package.json').version;
@@ -213,26 +212,6 @@ function autodetectAndConvertToJSONformat(lexerSpec, options) {
 
   return chk_l;
 }
-
-
-
-
-
-// HELPER FUNCTION: print the function in source code form, properly indented.
-/** @public */
-function printFunctionSourceCode(f) {
-    return String(f).replace(/^    /gm, '');
-}
-/** @public */
-function printFunctionSourceCodeContainer(f, depth) {
-    var s = String(f);
-    for (var d = (depth || 2); d > 0; d--) {
-        s = s.replace(/^    /gm, '');
-    }
-    s = s.replace(/^\s*function\b[^\{]+\{/, '').replace(/\}\s*$/, '');
-    return s;
-}
-
 
 
 // expand macros and convert matchers to RegExp's
@@ -964,83 +943,72 @@ function buildActions(dict, tokens, opts) {
 //       jison/lib/jison.js @ line 2304:lrGeneratorMixin.generateErrorClass
 //
 function generateErrorClass() {
-    /**
-     * See also:
-     * http://stackoverflow.com/questions/1382107/whats-a-good-way-to-extend-error-in-javascript/#35881508
-     * but we keep the prototype.constructor and prototype.name assignment lines too for compatibility
-     * with userland code which might access the derived class in a 'classic' way.
-     *
-     * @public
-     * @constructor
-     * @nocollapse
-     */
-    function JisonLexerError(msg, hash) {
-        Object.defineProperty(this, 'name', {
+    // --- START lexer error class ---
+
+var prelude = `/**
+ * See also:
+ * http://stackoverflow.com/questions/1382107/whats-a-good-way-to-extend-error-in-javascript/#35881508
+ * but we keep the prototype.constructor and prototype.name assignment lines too for compatibility
+ * with userland code which might access the derived class in a 'classic' way.
+ *
+ * @public
+ * @constructor
+ * @nocollapse
+ */
+function JisonLexerError(msg, hash) {
+    Object.defineProperty(this, 'name', {
+        enumerable: false,
+        writable: false,
+        value: 'JisonLexerError'
+    });
+
+    if (msg == null) msg = '???';
+
+    Object.defineProperty(this, 'message', {
+        enumerable: false,
+        writable: true,
+        value: msg
+    });
+
+    this.hash = hash;
+
+    var stacktrace;
+    if (hash && hash.exception instanceof Error) {
+        var ex2 = hash.exception;
+        this.message = ex2.message || msg;
+        stacktrace = ex2.stack;
+    }
+    if (!stacktrace) {
+        if (Error.hasOwnProperty('captureStackTrace')) { // V8
+            Error.captureStackTrace(this, this.constructor);
+        } else {
+            stacktrace = (new Error(msg)).stack;
+        }
+    }
+    if (stacktrace) {
+        Object.defineProperty(this, 'stack', {
             enumerable: false,
             writable: false,
-            value: 'JisonLexerError'
+            value: stacktrace
         });
-
-        if (msg == null) msg = '???';
-
-        Object.defineProperty(this, 'message', {
-            enumerable: false,
-            writable: true,
-            value: msg
-        });
-
-        this.hash = hash;
-
-        var stacktrace;
-        if (hash && hash.exception instanceof Error) {
-            var ex2 = hash.exception;
-            this.message = ex2.message || msg;
-            stacktrace = ex2.stack;
-        }
-        if (!stacktrace) {
-            if (Error.hasOwnProperty('captureStackTrace')) { // V8
-                Error.captureStackTrace(this, this.constructor);
-            } else {
-                stacktrace = (new Error(msg)).stack;
-            }
-        }
-        if (stacktrace) {
-            Object.defineProperty(this, 'stack', {
-                enumerable: false,
-                writable: false,
-                value: stacktrace
-            });
-        }
     }
+}
 
-    // wrap this init code in a function so we can String(function)-dump it into the generated
-    // output: that way we only have to write this code *once*!
-    function __extra_code__() {
-        if (typeof Object.setPrototypeOf === 'function') {
-            Object.setPrototypeOf(JisonLexerError.prototype, Error.prototype);
-        } else {
-            JisonLexerError.prototype = Object.create(Error.prototype);
-        }
-        JisonLexerError.prototype.constructor = JisonLexerError;
-        JisonLexerError.prototype.name = 'JisonLexerError';
-    }
-    __extra_code__();
+if (typeof Object.setPrototypeOf === 'function') {
+    Object.setPrototypeOf(JisonLexerError.prototype, Error.prototype);
+} else {
+    JisonLexerError.prototype = Object.create(Error.prototype);
+}
+JisonLexerError.prototype.constructor = JisonLexerError;
+JisonLexerError.prototype.name = 'JisonLexerError';`;
 
-    var prelude = [
-        '// See also:',
-        '// http://stackoverflow.com/questions/1382107/whats-a-good-way-to-extend-error-in-javascript/#35881508',
-        '// but we keep the prototype.constructor and prototype.name assignment lines too for compatibility',
-        '// with userland code which might access the derived class in a \'classic\' way.',
-        printFunctionSourceCode(JisonLexerError),
-        printFunctionSourceCodeContainer(__extra_code__),
-        '',
-    ];
+    // --- END lexer error class ---
 
-    return prelude.join('\n');
+    return prelude;
 }
 
 
-var jisonLexerErrorDefinition = generateErrorClass();
+const jisonLexerErrorDefinition = generateErrorClass();
 
 
 function generateFakeXRegExpClassSrcCode() {
@@ -2331,15 +2299,6 @@ RegExpLexer.prototype = (new Function(rmCommonWS`
 // The lexer code stripper, driven by optimization analysis settings and
 // lexer options, which cannot be changed at run-time.
 function stripUnusedLexerCode(src, opt) {
-    assert(recast);
-    var types = recast.types;
-    assert(types);
-    var namedTypes = types.namedTypes;
-    assert(namedTypes);
-    var b = types.builders;
-    assert(b);
-    assert(astUtils);
-
     //   uses yyleng: ..................... ${opt.lexerActionsUseYYLENG}
     //   uses yylineno: ................... ${opt.lexerActionsUseYYLINENO}
     //   uses yytext: ..................... ${opt.lexerActionsUseYYTEXT}
@@ -2354,20 +2313,8 @@ function stripUnusedLexerCode(src, opt) {
     //        ............................. ${opt.lexerActionsUseDisplayAPIs}
     //   uses describeYYLLOC() API: ....... ${opt.lexerActionsUseDescribeYYLOC}
 
-if (1) {
-    var ast = recast.parse(src);
-    var new_src = recast.prettyPrint(ast, { 
-        tabWidth: 2,
-        quote: 'single',
-        arrowParensAlways: true,
-
-        // Do not reuse whitespace (or anything else, for that matter)
-        // when printing generically.
-        reuseWhitespace: false
-    }).code;
-} else {
-    var new_src = prettier.format(src);
-}
+    var ast = helpers.parseCodeChunkToAST(src, opt);
+    var new_src = helpers.prettyPrintAST(ast, opt);
 
 if (0) {
     this.actionsUseYYLENG = analyzeFeatureUsage(this.performAction, /\byyleng\b/g, 1);
@@ -2427,7 +2374,7 @@ if (0) {
 
 
     // inject analysis report now:
-    new_src = new_src.replace(/\/\*JISON-LEX-ANALYTICS-REPORT\*\//g, rmCommonWS`
+    new_src = new_src.replace(/\/\*\s*JISON-LEX-ANALYTICS-REPORT\s*\*\//g, rmCommonWS`
         // Code Generator Information Report
         // ---------------------------------
         //
@@ -3155,8 +3102,6 @@ RegExpLexer.version = version;
 RegExpLexer.defaultJisonLexOptions = defaultJisonLexOptions;
 RegExpLexer.mkStdOptions = mkStdOptions;
 RegExpLexer.camelCase = camelCase;
-RegExpLexer.printFunctionSourceCode = printFunctionSourceCode;
-RegExpLexer.printFunctionSourceCodeContainer = printFunctionSourceCodeContainer;
 RegExpLexer.autodetectAndConvertToJSONformat = autodetectAndConvertToJSONformat;
 
 
