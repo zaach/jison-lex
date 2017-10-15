@@ -53,7 +53,7 @@
   "scripts": {
     "test": "make test",
     "build": "make",
-    "pub": "npm publish --access public"
+    "pub": "echo '### WARNING/NOTICE: publish from the jison monorepo! ###' && false"
   },
   "directories": {
     "lib": "lib",
