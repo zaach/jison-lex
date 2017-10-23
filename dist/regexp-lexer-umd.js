@@ -1012,7 +1012,7 @@ var camelCase   = helpers.camelCase;
 var code_exec   = helpers.exec;
 // import recast from '@gerhobbelt/recast';
 // import astUtils from '@gerhobbelt/ast-util';
-var version = '0.6.1-202';                              // require('./package.json').version;
+var version = '0.6.1-205';                              // require('./package.json').version;
 
 
 
@@ -1207,7 +1207,7 @@ function autodetectAndConvertToJSONformat(lexerSpec, options) {
 function prepareRules(dict, actions, caseHelper, tokens, startConditions, opts) {
     var m, i, k, rule, action, conditions,
         active_conditions,
-        rules = dict.rules,
+        rules = dict.rules || [],
         newRules = [],
         macros = {},
         regular_rule_count = 0,
@@ -1899,7 +1899,7 @@ function buildActions(dict, tokens, opts) {
         }
     }
 
-    if (opts.options.flex) {
+    if (opts.options.flex && dict.rules) {
         dict.rules.push(['.', 'console.log("", yytext); /* `flex` lexing mode: the last resort rule! */']);
     }
 
@@ -2139,7 +2139,7 @@ function RegExpLexer(dict, input, tokens, build_options) {
 
                 opts.conditions = [];
                 opts.showSource = false;
-            }, (dict.rules.length > 0 ?
+            }, ((dict.rules && dict.rules.length > 0) ?
                 'One or more of your lexer state names are possibly botched?' :
                 'Your custom lexer is somehow botched.'), ex, null)) {
                 if (!test_me(function () {
@@ -2150,7 +2150,7 @@ function RegExpLexer(dict, input, tokens, build_options) {
                 }, 'One or more of your lexer rules are possibly botched?', ex, null)) {
                     // kill each rule action block, one at a time and test again after each 'edit':
                     var rv = false;
-                    for (var i = 0, len = dict.rules.length; i < len; i++) {
+                    for (var i = 0, len = (dict.rules ? dict.rules.length : 0); i < len; i++) {
                         dict.rules[i][1] = '{ /* nada */ }';
                         rv = test_me(function () {
                             // opts.conditions = [];
@@ -2277,7 +2277,33 @@ return `{
      * @public
      * @this {RegExpLexer}
      */
-    constructLexErrorInfo: function lexer_constructLexErrorInfo(msg, recoverable) {
+    constructLexErrorInfo: function lexer_constructLexErrorInfo(msg, recoverable, show_input_position) {
+        msg = '' + msg;
+
+        // heuristic to determine if the error message already contains a (partial) source code dump
+        // as produced by either \`showPosition()\` or \`prettyPrintRange()\`:
+        if (show_input_position == undefined) {
+            show_input_position = !(msg.indexOf('\\n') > 0 && msg.indexOf('^') > 0);
+        }
+        if (this.yylloc && show_input_position) {
+            if (typeof this.prettyPrintRange === 'function') {
+                var pretty_src = this.prettyPrintRange(this.yylloc);
+
+                if (!/\\n\\s*$/.test(msg)) {
+                    msg += '\\n';
+                }
+                msg += '\\n  Erroneous area:\\n' + this.prettyPrintRange(this.yylloc);          
+            } else if (typeof this.showPosition === 'function') {
+                var pos_str = this.showPosition();
+                if (pos_str) {
+                    if (msg.length && msg[msg.length - 1] !== '\\n' && pos_str[0] !== '\\n') {
+                        msg += '\\n' + pos_str;
+                    } else {
+                        msg += pos_str;
+                    }
+                }
+            }
+        }
         /** @constructor */
         var pei = {
             errStr: msg,
@@ -2348,7 +2374,7 @@ return `{
      */
     yyerror: function yyError(str /*, ...args */) {
         var lineno_msg = '';
-        if (this.options.trackPosition) {
+        if (this.yylloc) {
             lineno_msg = ' on line ' + (this.yylineno + 1);
         }
         var p = this.constructLexErrorInfo('Lexical error' + lineno_msg + ': ' + str, this.options.lexerErrorsAreRecoverable);
@@ -2409,7 +2435,7 @@ return `{
         this._more = false;
         this._backtrack = false;
 
-        var col = this.yylloc ? this.yylloc.last_column : 0;
+        var col = (this.yylloc ? this.yylloc.last_column : 0);
         this.yylloc = {
             first_line: this.yylineno + 1,
             first_column: col,
@@ -2620,6 +2646,10 @@ return `{
             this.yylineno -= lines.length - 1;
 
             this.yylloc.last_line = this.yylineno + 1;
+
+            // Get last entirely matched line into the \`pre_lines[]\` array's
+            // last index slot; we don't mind when other previously 
+            // matched lines end up in the array too. 
             var pre = this.match;
             var pre_lines = pre.split(/(?:\\r\\n?|\\n)/g);
             if (pre_lines.length === 1) {
@@ -2663,17 +2693,10 @@ return `{
             // We accomplish this by signaling an 'error' token to be produced for the current
             // \`.lex()\` run.
             var lineno_msg = '';
-            if (this.options.trackPosition) {
+            if (this.yylloc) {
                 lineno_msg = ' on line ' + (this.yylineno + 1);
             }
-            var pos_str = '';
-            if (typeof this.showPosition === 'function') {
-                pos_str = this.showPosition();
-                if (pos_str && pos_str[0] !== '\\n') {
-                    pos_str = '\\n' + pos_str;
-                }
-            }
-            var p = this.constructLexErrorInfo('Lexical error' + lineno_msg + ': You can only invoke reject() in the lexer when the lexer is of the backtracking persuasion (options.backtrack_lexer = true).' + pos_str, false);
+            var p = this.constructLexErrorInfo('Lexical error' + lineno_msg + ': You can only invoke reject() in the lexer when the lexer is of the backtracking persuasion (options.backtrack_lexer = true).', false);
             this._signaled_error_token = (this.parseError(p.errStr, p, this.JisonLexerError) || this.ERROR);
         }
         return this;
@@ -2857,49 +2880,42 @@ return `{
             var lno_pfx = (ws_prefix + lno).substr(-lineno_display_width);
             var rv = lno_pfx + ': ' + line;
             var errpfx = (new Array(lineno_display_width + 1)).join('^');
+            var offset = 2 + 1;
+            var len = 0;
+
             if (lno === loc.first_line) {
-                var offset = loc.first_column + 2;
-                var len = Math.max(2, (lno === loc.last_line ? loc.last_column : line.length) - loc.first_column + 1);
-                var lead = (new Array(offset)).join('.');
-                var mark = (new Array(len)).join('^');
-                rv += '\\n' + errpfx + lead + mark;
-                if (line.trim().length > 0) {
-                    nonempty_line_indexes.push(index);
-                }
+              offset += loc.first_column;
+
+              len = Math.max(
+                2,
+                ((lno === loc.last_line ? loc.last_column : line.length)) - loc.first_column + 1
+              );
             } else if (lno === loc.last_line) {
-                var offset = 2 + 1;
-                var len = Math.max(2, loc.last_column + 1);
-                var lead = (new Array(offset)).join('.');
-                var mark = (new Array(len)).join('^');
-                rv += '\\n' + errpfx + lead + mark;
-                if (line.trim().length > 0) {
-                    nonempty_line_indexes.push(index);
-                }
+              len = Math.max(2, loc.last_column + 1);
             } else if (lno > loc.first_line && lno < loc.last_line) {
-                var offset = 2 + 1;
-                var len = Math.max(2, line.length + 1);
-                var lead = (new Array(offset)).join('.');
-                var mark = (new Array(len)).join('^');
-                rv += '\\n' + errpfx + lead + mark;
-                if (line.trim().length > 0) {
-                    nonempty_line_indexes.push(index);
-                }
+              len = Math.max(2, line.length + 1);
             }
+
+            if (len) {
+              var lead = new Array(offset).join('.');
+              var mark = new Array(len).join('^');
+              rv += '\\n' + errpfx + lead + mark;
+
+              if (line.trim().length > 0) {
+                nonempty_line_indexes.push(index);
+              }
+            }
+
             rv = rv.replace(/\\t/g, ' ');
             return rv;
         });
+
         // now make sure we don't print an overly large amount of error area: limit it 
         // to the top and bottom line count:
         if (nonempty_line_indexes.length > 2 * MINIMUM_VISIBLE_NONEMPTY_LINE_COUNT) {
             var clip_start = nonempty_line_indexes[MINIMUM_VISIBLE_NONEMPTY_LINE_COUNT - 1] + 1;
             var clip_end = nonempty_line_indexes[nonempty_line_indexes.length - MINIMUM_VISIBLE_NONEMPTY_LINE_COUNT] - 1;
-            console.log("clip off: ", {
-                start: clip_start, 
-                end: clip_end,
-                len: clip_end - clip_start + 1,
-                arr: nonempty_line_indexes,
-                rv
-            });
+
             var intermediate_line = (new Array(lineno_display_width + 1)).join(' ') +     '  (...continued...)';
             intermediate_line += '\\n' + (new Array(lineno_display_width + 1)).join('-') + '  (---------------)';
             rv.splice(clip_start, clip_end - clip_start + 1, intermediate_line);
@@ -3092,14 +3108,7 @@ return `{
                 if (this.options.trackPosition) {
                     lineno_msg = ' on line ' + (this.yylineno + 1);
                 }
-                var pos_str = '';
-                if (typeof this.showPosition === 'function') {
-                    pos_str = this.showPosition();
-                    if (pos_str && pos_str[0] !== '\\n') {
-                        pos_str = '\\n' + pos_str;
-                    }
-                }
-                var p = this.constructLexErrorInfo('Internal lexer engine error' + lineno_msg + ': The lex grammar programmer pushed a non-existing condition name "' + this.topState() + '"; this is a fatal error and should be reported to the application programmer team!' + pos_str, false);
+                var p = this.constructLexErrorInfo('Internal lexer engine error' + lineno_msg + ': The lex grammar programmer pushed a non-existing condition name "' + this.topState() + '"; this is a fatal error and should be reported to the application programmer team!', false);
                 // produce one 'error' token until this situation has been resolved, most probably by parse termination!
                 return (this.parseError(p.errStr, p, this.JisonLexerError) || this.ERROR);
             }
@@ -3149,19 +3158,25 @@ return `{
             if (this.options.trackPosition) {
                 lineno_msg = ' on line ' + (this.yylineno + 1);
             }
-            var pos_str = '';
-            if (typeof this.showPosition === 'function') {
-                pos_str = this.showPosition();
-                if (pos_str && pos_str[0] !== '\\n') {
-                    pos_str = '\\n' + pos_str;
-                }
-            }
-            var p = this.constructLexErrorInfo('Lexical error' + lineno_msg + ': Unrecognized text.' + pos_str, this.options.lexerErrorsAreRecoverable);
+            var p = this.constructLexErrorInfo('Lexical error' + lineno_msg + ': Unrecognized text.', this.options.lexerErrorsAreRecoverable);
+
+            var pendingInput = this._input;
+            var activeCondition = this.topState();
+            var conditionStackDepth = this.conditionStack.length;
+
             token = (this.parseError(p.errStr, p, this.JisonLexerError) || this.ERROR);
             if (token === this.ERROR) {
                 // we can try to recover from a lexer error that \`parseError()\` did not 'recover' for us
-                // by moving forward at least one character at a time:
-                if (!this.match.length) {
+                // by moving forward at least one character at a time IFF the (user-specified?) \`parseError()\`
+                // has not consumed/modified any pending input or changed state in the error handler:
+                if (!this.matches && 
+                    // and make sure the input has been modified/consumed ...
+                    pendingInput === this._input &&
+                    // ...or the lexer state has been modified significantly enough
+                    // to merit a non-consuming error handling action right now.
+                    activeCondition === this.topState() && 
+                    conditionStackDepth === this.conditionStack.length
+                ) {
                     this.input();
                 }
             }
