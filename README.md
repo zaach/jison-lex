@@ -103,6 +103,7 @@ lexer.lex();
 // => 'X'
 lexer.lex();
 // => 'Y'
+```
 
 
 ## license
