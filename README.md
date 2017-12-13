@@ -37,7 +37,57 @@ A lexical analyzer generator used by [jison](http://jison.org). It takes a lexic
 
 ## install
 
-npm install @gerhobbelt/jison-lex
+`npm install jison-gho`
+
+Then the `jison-lex` library is located in the subdirectory `packages/jison-lex/` of the `jison-gho` monorepo, i.e. `.../node_modules/jison-gho/packages/jison-lex/`.
+
+Alternatively, the entire `jison-lex` API is also available via the `jison` API itself as can be seen from this internal `jison` code snippet:
+
+```
+import Lexer from '../packages/jison-lex';
+import ebnfParser from '../packages/ebnf-parser';
+import lexParser from '../packages/lex-parser';
+import grammarPrinter from './util/grammar-printer.js';
+import helpers from '../packages/helpers-lib';
+var rmCommonWS = helpers.rmCommonWS;
+var camelCase  = helpers.camelCase;
+var code_exec  = helpers.exec;
+import XRegExp from '@gerhobbelt/xregexp';
+import recast from '@gerhobbelt/recast';
+import astUtils from '@gerhobbelt/ast-util';
+import json5 from '@gerhobbelt/json5';
+
+// Also export other APIs: the JISON module should act as a 'facade' for the others,
+// so applications using the JISON compiler itself can rely on it providing everything
+// in a guaranteed compatible version as it allows userland code to use the precise
+// same APIs as JISON will be using itself:
+Jison.Lexer = Lexer;
+Jison.ebnfParser = ebnfParser;
+Jison.lexParser = lexParser;
+Jison.codeExec = code_exec;
+Jison.XRegExp = XRegExp;
+Jison.recast = recast;
+Jison.astUtils = astUtils;
+Jison.JSON5 = json5;
+Jison.prettyPrint = grammarPrinter;
+Jison.rmCommonWS = rmCommonWS;
+Jison.mkStdOptions = mkStdOptions;
+Jison.camelCase = camelCase;
+Jison.autodetectAndConvertToJSONformat = autodetectAndConvertToJSONformat;
+...
+Jison.Parser = Parser;
+
+export default Jison;
+```
+
+hence you can get at it this way, for example:
+
+```
+import jisonAPI from 'jison-gho';
+// get a reference to the full `jison-lex` API:
+const jisonLexAPI = jisonAPI.Lexer;
+```
+
 
 
 ## build
