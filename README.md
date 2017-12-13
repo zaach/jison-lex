@@ -3,7 +3,7 @@
 
 [![Join the chat at https://gitter.im/jison-parsers-lexers/Lobby](https://badges.gitter.im/jison-parsers-lexers/Lobby.svg)](https://gitter.im/jison-parsers-lexers/Lobby?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge) 
 [![Build Status](https://travis-ci.org/GerHobbelt/jison-lex.svg?branch=master)](https://travis-ci.org/GerHobbelt/jison-lex)
-[![NPM version](https://badge.fury.io/js/@gerhobbelt/jison-lex.svg)](http://badge.fury.io/js/@gerhobbelt/jison-lex)
+[![NPM version](https://badge.fury.io/js/jison-gho.svg)](https://badge.fury.io/js/jison-gho)
 [![Dependency Status](https://img.shields.io/david/GerHobbelt/jison-lex.svg)](https://david-dm.org/GerHobbelt/jison-lex)
 [![npm](https://img.shields.io/npm/dm/@gerhobbelt/jison-lex.svg?maxAge=2592000)]()
 
