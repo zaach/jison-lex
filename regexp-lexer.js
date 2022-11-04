@@ -50,7 +50,9 @@ function prepareRules(rules, macros, actions, tokens, startConditions, caseless)
                     m = m.split("{" + k + "}").join('(' + macros[k] + ')');
                 }
             }
-            m = new RegExp("^(?:" + m + ")", caseless ? 'i':'');
+            /* toggledbits 2022-11-04: detect use of Unicode property name in regexp and enable */
+            var unicode = m.match( /\\p\{/i ) ? 'u' : '';
+            m = new RegExp("^(?:" + m + ")", unicode + (caseless ? 'i':''));
         }
         newRules.push(m);
         if (typeof rules[i][1] === 'function') {
